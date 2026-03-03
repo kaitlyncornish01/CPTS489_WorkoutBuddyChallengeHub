@@ -1,0 +1,122 @@
+/* =========================
+   GLOBAL THEME STYLES
+========================= */
+
+body {
+    background-color: #e4dfd6;
+    font-family: 'Segoe UI', sans-serif;
+    background-image: radial-gradient(circle at top right, rgba(214,166,51,0.05), transparent 40%);
+}
+
+/* =========================
+   BRANDING
+========================= */
+
+.brand-title {
+    color: #5c4a3d;
+    font-weight: 600;
+}
+
+.gold-accent {
+    color: #709770;  /* changed to sage green */
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* =========================
+   CARDS
+========================= */
+
+.card-custom,
+.login-card,
+.form-card,
+.hero-card {
+    background-color: #faf8f4;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    padding: 40px;
+}
+
+/* =========================
+   PRIMARY BUTTON (GOLD)
+========================= */
+
+.btn-primary-custom {
+    background: linear-gradient(
+        90deg,
+        #e6bf4d,
+        #b88a29,
+        #7f5f1a
+    );
+    border: none;
+    color: white;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.btn-primary-custom:hover {
+    background: linear-gradient(
+        90deg,
+        #d3a633,
+        #a67822,
+        #6e5215
+    );
+    box-shadow: 0 4px 12px rgba(127,95,26,0.25);
+}
+
+/* =========================
+   FORMS
+========================= */
+
+.form-control,
+.form-select {
+    border-radius: 10px;
+}
+
+/* =========================
+   LINKS
+========================= */
+
+a {
+    color: #7a8f7a;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* =========================
+   GOLD DIVIDER
+========================= */
+
+.gold-divider {
+    height: 3px;
+    width: 60px;
+    background: linear-gradient(
+        90deg,
+        #e6bf4d,
+        #b88a29,
+        #7f5f1a
+    );
+    border-radius: 3px;
+    margin-top: 8px;
+}
+
+/* =========================
+   NAVBAR
+========================= */
+
+.navbar-custom {
+    background-color: #faf8f4; /* cream background */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.navbar-custom .nav-link {
+    color: #5c4a3d !important;
+    font-weight: 500;
+}
+
+.navbar-custom .nav-link:hover {
+    color: #7a8f7a !important;
+}

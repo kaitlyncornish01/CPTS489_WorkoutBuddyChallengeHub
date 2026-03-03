@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Workout Buddy Challenge Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="#">Workout Buddy</a>
+
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="browse-challenges.html">Challenges</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container py-5">
+
+    <!-- Welcome Header -->
+    <div class="mb-5">
+        <h2 class="brand-title">Welcome Back, Kaitlyn</h2>
+        <div class="gold-divider"></div>
+        <p class="gold-accent">Stay consistent. Stay motivated.</p>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="row g-4 mb-5">
+
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div class="stat-number">12</div>
+                <div class="stat-label">Workouts This Month</div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Active Challenges</div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div class="stat-number">87%</div>
+                <div class="stat-label">Goal Completion Rate</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ACTION + ACTIVE CHALLENGES -->
+    <div class="row g-4">
+
+        <div class="col-lg-4">
+            <div class="card-custom text-center">
+                <h5 class="mb-3">Log a New Workout</h5>
+                <p class="text-muted mb-4">Track today’s progress and update your challenges.</p>
+                <a href="log-workout.html" class="btn btn-primary-custom w-100">
+                    Log Workout
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <h5 class="mb-4 brand-title">Active Challenges</h5>
+
+                <div class="mb-3">
+                    <strong>30 Day Step Challenge</strong>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" style="width: 65%; background-color: #7a8f7a;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <strong>Weekly Strength Training</strong>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" style="width: 40%; background-color: #7a8f7a;"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
