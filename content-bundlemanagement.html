@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bundle Management - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="trainerdashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="trainerdashboard.html">Dashboard</a>
+        <a class="nav-link d-inline me-3" href="contentmanagement.html">My Content</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+<div class="container py-5">
+    <h2 class="brand-title mb-2">Content Bundles</h2>
+    <div class="gold-divider mb-3"></div>
+    <p class="gold-accent mb-5">Group your content into bundles for easier purchase and access</p>
+
+    <div class="row g-4">
+        <!-- Existing Bundle -->
+        <div class="col-lg-7">
+            <div class="card-custom mb-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="brand-title mb-1">Upper Body Hypertrophy Bundle</h5>
+                        <p class="text-muted mb-0" style="font-size:0.9rem;">One-Time Purchase: $19.99 &bull; 33 buyers</p>
+                    </div>
+                    <span class="badge" style="background-color:#709770;">Published</span>
+                </div>
+                <p class="text-muted mb-3">Complete upper body program including chest, back, shoulders, and arms.</p>
+                <h6 class="brand-title mb-2">Included Content (3 items)</h6>
+                <ul class="mb-3">
+                    <li>Week 1-2: Foundation Movements</li>
+                    <li>Week 3-4: Progressive Overload</li>
+                    <li>Nutrition Guide for Hypertrophy</li>
+                </ul>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm">+ Add Content</button>
+                    <a href="content-pricing.html" class="btn btn-outline-secondary btn-sm">Edit Pricing</button>
+                    <button class="btn btn-outline-secondary btn-sm">Unpublish</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create New Bundle -->
+        <div class="col-lg-5">
+            <div class="card-custom">
+                <h5 class="brand-title mb-3">Create New Bundle</h5>
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Bundle Name</label>
+                        <input type="text" class="form-control" placeholder="e.g. Complete Fitness Starter Pack">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="2" placeholder="What does this bundle include?"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Content to Include</label>
+                        <div class="p-2" style="background-color:#f0ede8;border-radius:8px;">
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="c1">
+                                <label class="form-check-label" for="c1">30 Day Core Strength Program</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="c2">
+                                <label class="form-check-label" for="c2">5K Running Beginner Plan</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="c3">
+                                <label class="form-check-label" for="c3">Advanced HIIT Circuits</label>
+                            </div>
+                        </div>
+                        <small class="text-muted">Select at least 2 items</small>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Bundle Price (USD)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" placeholder="0.00" min="0.01" step="0.01">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary-custom">Create Bundle</button>
+                        <button class="btn btn-outline-secondary">Save Draft</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
