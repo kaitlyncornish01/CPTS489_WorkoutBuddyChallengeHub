@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Participant Progress - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="trainerdashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="trainerdashboard.html">Dashboard</a>
+        <a class="nav-link d-inline me-3" href="contentmanagement.html">My Content</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+<div class="container py-5">
+    <h2 class="brand-title mb-2">Participant Progress</h2>
+    <div class="gold-divider mb-3"></div>
+    <p class="gold-accent mb-4">Track how your participants are performing</p>
+
+    <!-- Challenge selector -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-5">
+            <select class="form-select">
+                <option>30 Day Core Strength Program (48 participants)</option>
+                <option>5K Running Beginner Plan (61 participants)</option>
+                <option>Upper Body Hypertrophy Bundle (33 participants)</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select">
+                <option>All Participants</option>
+                <option>Most Active</option>
+                <option>Behind Schedule</option>
+                <option>Completed</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <a href="activity-feed.html" class="btn btn-primary-custom">Post Update to Feed</a>
+        </div>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card-custom text-center py-3">
+                <div style="font-size:1.8rem;font-weight:700;color:#5c4a3d;">48</div>
+                <div style="color:#709770;font-weight:600;font-size:0.9rem;">Total Participants</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-custom text-center py-3">
+                <div style="font-size:1.8rem;font-weight:700;color:#5c4a3d;">31</div>
+                <div style="color:#709770;font-weight:600;font-size:0.9rem;">On Track</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-custom text-center py-3">
+                <div style="font-size:1.8rem;font-weight:700;color:#5c4a3d;">12</div>
+                <div style="color:#709770;font-weight:600;font-size:0.9rem;">Behind Schedule</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-custom text-center py-3">
+                <div style="font-size:1.8rem;font-weight:700;color:#5c4a3d;">5</div>
+                <div style="color:#709770;font-weight:600;font-size:0.9rem;">Completed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participant list -->
+    <div class="card-custom">
+        <h5 class="brand-title mb-4">Participant List</h5>
+
+        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Sarah M.</strong>
+                    <span class="badge ms-2" style="background-color:#709770;">On Track</span>
+                </div>
+                <span class="text-muted" style="font-size:0.875rem;">18 workouts logged</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:72%;background-color:#709770;"></div>
+            </div>
+            <small class="text-muted">72% complete</small>
+        </div>
+
+        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Jordan T.</strong>
+                    <span class="badge ms-2 bg-warning text-dark">Behind</span>
+                </div>
+                <span class="text-muted" style="font-size:0.875rem;">8 workouts logged</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:32%;background-color:#e6bf4d;"></div>
+            </div>
+            <small class="text-muted">32% complete</small>
+        </div>
+
+        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Alex R.</strong>
+                    <span class="badge ms-2 bg-success">Completed</span>
+                </div>
+                <span class="text-muted" style="font-size:0.875rem;">30 workouts logged</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:100%;background-color:#709770;"></div>
+            </div>
+            <small class="text-muted">100% complete</small>
+        </div>
+
+        <div class="p-3" style="background-color:#f0ede8;border-radius:10px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Casey L.</strong>
+                    <span class="badge ms-2" style="background-color:#709770;">On Track</span>
+                </div>
+                <span class="text-muted" style="font-size:0.875rem;">15 workouts logged</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:60%;background-color:#709770;"></div>
+            </div>
+            <small class="text-muted">60% complete</small>
+        </div>
+    </div>
+</div>
+</body>
+</html>
