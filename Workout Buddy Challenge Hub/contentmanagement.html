@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Content Management - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="trainerdashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="trainerdashboard.html">Dashboard</a>
+        <a class="nav-link d-inline me-3" href="create-content.html">Create Content</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+<div class="container py-5">
+    <h2 class="brand-title mb-2">My Content</h2>
+    <div class="gold-divider mb-3"></div>
+    <p class="gold-accent mb-4">Manage your published and draft content</p>
+
+    <!-- Filter bar -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <input type="text" class="form-control" placeholder="Search your content...">
+        </div>
+        <div class="col-md-3">
+            <select class="form-select">
+                <option>All Status</option>
+                <option>Published</option>
+                <option>Draft</option>
+                <option>Unpublished</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select">
+                <option>All Pricing</option>
+                <option>Free</option>
+                <option>Tip-Based</option>
+                <option>One-Time Purchase</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <a href="create-content.html" class="btn btn-primary-custom w-100">+ New</a>
+        </div>
+    </div>
+
+    <!-- Content items -->
+    <div class="card-custom mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="brand-title mb-1">30 Day Core Strength Program</h5>
+                <p class="text-muted mb-1" style="font-size:0.9rem;">Published &bull; One-Time Purchase: $12.99 &bull; 48 buyers</p>
+                <span class="badge" style="background-color:#709770;">Published</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="content-pricing.html" class="btn btn-outline-secondary btn-sm">Edit Pricing</a>
+                <button class="btn btn-outline-secondary btn-sm">Unpublish</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-custom mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="brand-title mb-1">5K Running Beginner Plan</h5>
+                <p class="text-muted mb-1" style="font-size:0.9rem;">Published &bull; Free &bull; 61 users</p>
+                <span class="badge" style="background-color:#709770;">Published</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="content-pricing.html" class="btn btn-outline-secondary btn-sm">Edit Pricing</a>
+                <button class="btn btn-outline-secondary btn-sm">Unpublish</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-custom mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="brand-title mb-1">Advanced HIIT Circuits (Draft)</h5>
+                <p class="text-muted mb-1" style="font-size:0.9rem;">Draft &bull; Not published yet</p>
+                <span class="badge bg-secondary">Draft</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="create-content.html" class="btn btn-outline-secondary btn-sm">Edit</a>
+                <button class="btn btn-primary-custom btn-sm">Publish</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-custom">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="brand-title mb-1">Upper Body Hypertrophy Bundle</h5>
+                <p class="text-muted mb-1" style="font-size:0.9rem;">Published &bull; One-Time Purchase: $19.99 &bull; 33 buyers</p>
+                <span class="badge" style="background-color:#709770;">Published</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="content-pricing.html" class="btn btn-outline-secondary btn-sm">Edit Pricing</a>
+                <a href="content-bundlemanagement.html" class="btn btn-outline-secondary btn-sm">Edit Bundle</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

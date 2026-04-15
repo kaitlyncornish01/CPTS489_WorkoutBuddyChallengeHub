@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .btn-sage-outline {
+            color: #709770;
+            border: 2px solid #709770;
+            background-color: transparent;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-sage-outline:hover {
+            background-color: #709770;
+            color: white;
+            box-shadow: 0 4px 12px rgba(112, 151, 112, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="browse-challenges.html">Challenges</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="card-custom">
+        <div class="text-center mb-5">
+            <h2 class="brand-title display-5 mb-1" id="display-name">Loading...</h2>
+            <div class="gold-divider mx-auto" style="width: 100px; height: 3px; margin: 15px 0;"></div>
+            <p class="gold-accent fw-bold text-uppercase mb-3" style="letter-spacing: 2px;">Fitness Enthusiast</p>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <p class="text-muted fs-5" id="display-bio">Loading bio...</p>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="profile-edit.html" class="btn btn-sage-outline px-5 py-2">
+                    Edit Profile
+                </a>
+            </div>
+        </div>
+
+        <hr class="opacity-10 mb-5">
+
+        <div class="row text-center">
+            <div class="col-md-4 mb-4 mb-md-0">
+                <div class="h1 fw-bold brand-title mb-0" id="stat-workouts">0</div>
+                <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Total Workouts</div>
+            </div>
+
+            <div class="col-md-4 mb-4 mb-md-0 border-start border-end border-light">
+                <div class="h1 fw-bold brand-title mb-0" id="stat-challenges">0</div>
+                <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Active Challenges</div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="h1 fw-bold brand-title mb-0" id="stat-rate">0%</div>
+                <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Completion Rate</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const currentUserId = 1;
+
+    async function loadProfile() {
+        try {
+            // 1. Fetch Name and Bio
+            const userRes = await fetch(`/profile/${currentUserId}`);
+            const user = await userRes.json();
+            document.getElementById("display-name").innerText = user.name;
+            document.getElementById("display-bio").innerText = user.bio || "Staying consistent and motivated on the fitness journey.";
+
+            // 2. Fetch Live Database Stats
+            const statsRes = await fetch(`/profile-stats/${currentUserId}`);
+            const stats = await statsRes.json();
+
+            // 3. Update Stats UI
+            document.getElementById("stat-workouts").innerText = stats.totalWorkouts;
+            document.getElementById("stat-challenges").innerText = stats.activeChallenges;
+            document.getElementById("stat-rate").innerText = stats.completionRate + "%";
+
+        } catch (err) {
+            console.error("Error loading profile data:", err);
+        }
+    }
+
+    loadProfile();
+</script>
+
+</body>
+</html>

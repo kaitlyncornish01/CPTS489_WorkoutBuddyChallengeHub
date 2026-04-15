@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Profile - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="browse-challenges.html">Challenges</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="card-custom p-4">
+        <h3 class="brand-title mb-2">Edit Profile</h3>
+        <div class="gold-divider"></div>
+        <p class="gold-accent mb-4">Update your name and bio</p>
+
+        <form id="profileForm">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Full Name</label>
+                <input type="text" id="nameInput" class="form-control" placeholder="Enter your name" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">Bio</label>
+                <textarea id="bioInput" class="form-control" rows="4" placeholder="Tell us about your fitness goals..."></textarea>
+            </div>
+
+            <div class="d-flex gap-3">
+                <button type="submit" class="btn btn-primary-custom px-4 py-2">
+                    Save Changes
+                </button>
+                <a href="profile-view.html" class="btn btn-outline-secondary px-4 py-2">
+                    Cancel
+                </a>
+            </div>
+
+            <div id="statusMsg" class="mt-3 small fw-bold"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const currentUserId = 1;
+
+    // Load existing data from database
+    async function loadData() {
+        try {
+            const res = await fetch(`/profile/${currentUserId}`);
+            if (res.ok) {
+                const user = await res.json();
+                document.getElementById("nameInput").value = user.name;
+                document.getElementById("bioInput").value = user.bio || "";
+            }
+        } catch (err) {
+            console.error("Error loading profile data:", err);
+        }
+    }
+
+    // Handle form submission
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const status = document.getElementById("statusMsg");
+        
+        const updatedData = {
+            name: document.getElementById("nameInput").value,
+            bio: document.getElementById("bioInput").value
+        };
+
+        try {
+            const res = await fetch(`/profile/${currentUserId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedData)
+            });
+
+            if (res.ok) {
+                status.style.color = "#709770"; // Sage Green
+                status.innerText = "✓ Profile updated successfully!";
+                
+                // Redirect back to profile view after a short delay
+                setTimeout(() => {
+                    window.location.href = "profile-view.html";
+                }, 1000);
+            } else {
+                status.style.color = "#dc3545"; // Red
+                status.innerText = "Error updating profile.";
+            }
+        } catch (err) {
+            status.innerText = "Connection error. Is the server running?";
+        }
+    });
+
+    // Initialize the page
+    loadData();
+</script>
+
+</body>
+</html>

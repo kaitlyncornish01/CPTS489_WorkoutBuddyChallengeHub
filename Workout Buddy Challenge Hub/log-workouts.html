@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Log Workout - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="browse-challenges.html">Challenges</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<div class="container py-5">
+
+    <h2 class="brand-title mb-2">Log Workout</h2>
+    <div class="gold-divider"></div>
+    <p class="gold-accent mb-4">Track your progress and update your challenges</p>
+
+    <div class="card-custom">
+        <form id="workoutForm">
+            <div class="mb-3">
+                <label class="form-label">Workout Type</label>
+                <select id="type" class="form-select">
+                    <option value="Running">Running</option>
+                    <option value="Strength Training">Strength Training</option>
+                    <option value="Cycling">Cycling</option>
+                    <option value="HIIT">HIIT</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Duration (minutes)</label>
+                    <input type="number" id="duration" class="form-control" required>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Calories Burned</label>
+                    <input type="number" id="calories" class="form-control">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Date</label>
+                <input type="date" id="date" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary-custom btn-lg w-100">
+                Submit Workout
+            </button>
+            
+            <div id="statusMsg" class="mt-3 text-center fw-bold"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Pre-fill the date field with today's date for convenience
+    document.getElementById('date').valueAsDate = new Date();
+
+    const workoutForm = document.getElementById('workoutForm');
+    const statusMsg = document.getElementById('statusMsg');
+    const currentUserId = 1; // Assuming user_id 1
+
+    workoutForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const workoutData = {
+            user_id: currentUserId,
+            type: document.getElementById('type').value,
+            duration: document.getElementById('duration').value,
+            calories: document.getElementById('calories').value || 0,
+            date: document.getElementById('date').value
+        };
+
+        try {
+            const res = await fetch("/log-workout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(workoutData)
+            });
+
+            if (res.ok) {
+                statusMsg.style.color = "#709770"; // Sage Green
+                statusMsg.innerText = "✓ Workout logged and shared to feed!";
+                workoutForm.reset();
+                document.getElementById('date').valueAsDate = new Date(); // reset to today
+                
+                // Optional: Redirect to activity feed after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "activity-feed.html";
+                }, 2000);
+            } else {
+                const errText = await res.text();
+                statusMsg.style.color = "#dc3545";
+                statusMsg.innerText = "Error: " + errText;
+            }
+        } catch (err) {
+            statusMsg.style.color = "#dc3545";
+            statusMsg.innerText = "Connection error. Is the server running?";
+        }
+    });
+</script>
+
+</body>
+</html>

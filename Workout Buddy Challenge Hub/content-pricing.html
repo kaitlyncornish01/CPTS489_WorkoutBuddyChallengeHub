@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Content Pricing - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="trainerdashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="trainerdashboard.html">Dashboard</a>
+        <a class="nav-link d-inline me-3" href="contentmanagement.html">My Content</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+<div class="container py-5">
+    <div class="card-custom" style="max-width:580px;margin:0 auto;">
+        <h3 class="brand-title mb-2">Set Content Pricing</h3>
+        <div class="gold-divider mb-3"></div>
+        <p class="gold-accent mb-1">30 Day Core Strength Program</p>
+        <p class="text-muted mb-4" style="font-size:0.9rem;">Choose how users access this content</p>
+
+        <form>
+            <!-- Option 1: Free -->
+            <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="pricing" id="free">
+                    <label class="form-check-label" for="free">
+                        <strong>Free</strong>
+                        <p class="text-muted mb-0" style="font-size:0.875rem;">Anyone can access this content at no cost</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Option 2: Tip-Based -->
+            <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="pricing" id="tip">
+                    <label class="form-check-label" for="tip">
+                        <strong>Tip-Based</strong>
+                        <p class="text-muted mb-0" style="font-size:0.875rem;">Content is free, but users can tip you any amount</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Option 3: One-Time Purchase -->
+            <div class="mb-4 p-3" style="background-color:#f0ede8;border-radius:10px;">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="pricing" id="purchase" checked>
+                    <label class="form-check-label" for="purchase">
+                        <strong>One-Time Purchase</strong>
+                        <p class="text-muted mb-0" style="font-size:0.875rem;">Users pay once to access this content</p>
+                    </label>
+                </div>
+                <div class="mt-3 ms-4">
+                    <label class="form-label">Price (USD)</label>
+                    <div class="input-group" style="max-width:180px;">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" placeholder="0.00" value="12.99" min="0.01" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3">
+                <button class="btn btn-primary-custom px-5">Save Pricing</button>
+                <a href="contentmanagement.html" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

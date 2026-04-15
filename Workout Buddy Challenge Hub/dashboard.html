@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="browse-challenges.html">Challenges</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="mb-5">
+        <h2 class="brand-title">Welcome Back, Kaitlyn</h2>
+        <div class="gold-divider"></div>
+        <p class="gold-accent">Stay consistent. Stay motivated.</p>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div id="workoutCount" class="h1 fw-bold brand-title">0</div>
+                <div class="text-muted small text-uppercase fw-bold">Total Workouts</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div id="challengeCount" class="h1 fw-bold brand-title">0</div>
+                <div class="text-muted small text-uppercase fw-bold">Active Challenges</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <div id="goalCompletion" class="h1 fw-bold brand-title">0%</div>
+                <div class="text-muted small text-uppercase fw-bold">Goal Completion</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card-custom text-center h-100">
+                <h5 class="mb-3">Log a New Workout</h5>
+                <p class="text-muted mb-4 small">Track today’s progress and update your challenges.</p>
+                <a href="log-workouts.html" class="btn btn-primary-custom w-100 py-2">
+                    Log Workout
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card-custom h-100">
+                <h5 class="mb-4 brand-title">Your Active Challenges</h5>
+                <div id="activeChallengesList">
+                    <p class="text-muted small italic">Loading your progress...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const currentUserId = 1;
+
+    async function loadDashboard() {
+        try {
+            // 1. Fetch live stats (Workouts and Completion Rate)
+            const statsRes = await fetch(`/profile-stats/${currentUserId}`);
+            const stats = await statsRes.json();
+            
+            document.getElementById("workoutCount").innerText = stats.totalWorkouts;
+            document.getElementById("goalCompletion").innerText = stats.completionRate + "%";
+
+            // 2. Fetch Active Challenges
+            const res = await fetch(`/user-challenges/${currentUserId}`);
+            const challenges = await res.json();
+            
+            document.getElementById("challengeCount").innerText = challenges.length;
+            const list = document.getElementById("activeChallengesList");
+            list.innerHTML = "";
+
+            if (challenges.length === 0) {
+                list.innerHTML = `<p class="text-muted">You haven't joined any challenges yet. <a href="browse-challenges.html" class="gold-accent text-decoration-none">Find one!</a></p>`;
+                return;
+            }
+
+            challenges.forEach(c => {
+                const div = document.createElement("div");
+                div.className = "mb-4 pb-2 border-bottom border-light";
+                div.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong class="brand-title">${c.title}</strong>
+                        <a href="challenge-details.html?id=${c.id}" class="btn btn-sm btn-outline-secondary border-0 text-muted">View</a>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" style="width: 50%; background-color: #709770;"></div>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        } catch (err) {
+            console.error("Dashboard error:", err);
+        }
+    }
+    loadDashboard();
+</script>
+</body>
+</html>
