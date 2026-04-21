@@ -264,6 +264,105 @@ app.get("/profile-stats/:id", (req, res) => {
     });
 });
 
+/* ================= GET ALL REPORTS ================= */
+app.get('/reports', (req, res) => {
+    db.query("SELECT * FROM reports WHERE status = 'Pending'", (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
+
+// Resolve report
+app.post('/reports/:id/resolve', (req, res) => {
+    const reportId = req.params.id;
+
+    db.query(
+        "UPDATE reports SET status = 'Resolved' WHERE id = ?",
+        [reportId],
+        (err) => {
+            if (err) return res.status(500).send(err);
+            res.send("Report resolved");
+        }
+    );
+});
+
+// Dismiss report
+app.post('/reports/:id/dismiss', (req, res) => {
+    const reportId = req.params.id;
+
+    db.query(
+        "UPDATE reports SET status = 'Dismissed' WHERE id = ?",
+        [reportId],
+        (err) => {
+            if (err) return res.status(500).send(err);
+            res.send("Report dismissed");
+        }
+    );
+});
+
+/* ================= PLATFORM ACTIVITY ================= */
+app.get('/admin/activity', (req, res) => {
+    db.query(
+        "SELECT * FROM posts ORDER BY created_at DESC LIMIT 20",
+        (err, results) => {
+            if (err) return res.status(500).send(err);
+            res.json(results);
+        }
+    );
+});
+
+/* ================= SITE STATISTICS ================= */
+app.get('/admin/stats', (req, res) => {
+    const stats = {};
+
+    db.query("SELECT COUNT(*) AS users FROM users", (err, r1) => {
+        stats.users = r1[0].users;
+
+        db.query("SELECT COUNT(*) AS challenges FROM challenges", (err, r2) => {
+            stats.challenges = r2[0].challenges;
+
+            db.query("SELECT COUNT(*) AS workouts FROM workouts", (err, r3) => {
+                stats.workouts = r3[0].workouts;
+
+                res.json(stats);
+            });
+        });
+    });
+});
+
+/* ================= SYSTEM SETTINGS ================= */
+app.post('/admin/settings', (req, res) => {
+    const { site_name } = req.body;
+
+    db.query(
+        "UPDATE settings SET value = ? WHERE name = 'site_name'",
+        [site_name],
+        (err) => {
+            if (err) return res.status(500).send(err);
+            res.send("Settings updated");
+        }
+    );
+});
+
+/* ================= REFUNDS ================= */
+app.get('/admin/refunds', (req, res) => {
+    db.query("SELECT * FROM purchases WHERE status = 'Requested'", (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
+
+app.post('/admin/refunds/:id/approve', (req, res) => {
+    db.query(
+        "UPDATE purchases SET status = 'Refunded' WHERE id = ?",
+        [req.params.id],
+        (err) => {
+            if (err) return res.status(500).send(err);
+            res.send("Refund issued");
+        }
+    );
+});
+
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
 });
