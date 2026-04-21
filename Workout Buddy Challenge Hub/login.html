@@ -4,40 +4,50 @@
     <title>Login - Workout Buddy Challenge Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Custom styles for role switching */
+        .role-link { 
+            cursor: pointer; 
+            transition: 0.3s; 
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .role-link:hover { 
+            background-color: #f0ede8;
+            color: #709770 !important; 
+        }
+        .active-role { 
+            font-weight: bold; 
+            color: #ffffff !important; 
+            background-color: #e6bf4d; /* Gold background for active selection */
+        }
+        #role-user {
+            color: #709770;
+            text-decoration: underline;
+        }
+    </style>
 </head>
-
 <body>
 
 <div class="container vh-100 d-flex align-items-center justify-content-center">
-
     <div class="login-card w-100" style="max-width: 420px;">
-
         <div class="text-center mb-4">
             <h2 class="brand-title">Workout Buddy</h2>
-            <h5 class="gold-accent">Challenge Hub</h5>
+            <h5 id="portal-title" class="gold-accent">Challenge Hub</h5>
         </div>
 
         <h4 class="text-center mb-4">Welcome Back</h4>
 
         <form id="loginForm">
-
             <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input type="email" id="email" class="form-control" placeholder="Enter your email">
+                <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
             </div>
-
             <div class="mb-3">
                 <label class="form-label">Password</label>
-                <input type="password" id="password" class="form-control" placeholder="Enter your password">
+                <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
             </div>
-
-            <div class="form-check mb-4">
-                <input type="checkbox" class="form-check-input">
-                <label class="form-check-label">Remember Me</label>
-            </div>
-
-            <button class="btn btn-primary-custom w-100 py-2">Log In</button>
-
+            <button type="submit" id="submitBtn" class="btn btn-primary-custom w-100 py-2">Log In</button>
         </form>
 
         <div class="text-center mt-4">
@@ -45,30 +55,80 @@
             <a href="register.html">Create one</a>
         </div>
 
+        <div class="text-center mt-3 pt-3 border-top">
+            <p class="small text-muted mb-2">Staff Access</p>
+            <div class="d-flex justify-content-center align-items-center gap-2">
+                <span id="role-trainer" class="small text-muted role-link" onclick="setRole('trainer')">Trainer Login</span>
+                <span class="text-muted">|</span>
+                <span id="role-admin" class="small text-muted role-link" onclick="setRole('admin')">Admin Login</span>
+            </div>
+            <div id="user-back-div" class="mt-2 d-none">
+                <span id="role-user" class="small role-link" onclick="setRole('user')">Return to User Login</span>
+            </div>
+        </div>
     </div>
-
 </div>
 
 <script>
+// Default state
+let currentRole = 'user';
+
+function setRole(role) {
+    currentRole = role;
+    const title = document.getElementById('portal-title');
+    const userBackDiv = document.getElementById('user-back-div');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // 1. Remove active class from everyone
+    document.querySelectorAll('.role-link').forEach(el => el.classList.remove('active-role'));
+
+    if(role !== 'user') {
+        // 2. Highlight selected staff role
+        document.getElementById(`role-${role}`).classList.add('active-role');
+        title.innerText = role.charAt(0).toUpperCase() + role.slice(1) + " Portal";
+        title.style.color = "#709770"; // Change sub-header to green
+        userBackDiv.classList.remove('d-none');
+        submitBtn.style.backgroundColor = "#709770"; // Staff buttons turn green
+    } else {
+        // 3. Reset to User Hub
+        title.innerText = "Challenge Hub";
+        title.style.color = "#e6bf4d"; // Reset to gold
+        userBackDiv.classList.add('d-none');
+        submitBtn.style.backgroundColor = ""; // Reset to original CSS
+    }
+}
+
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault(); // stops page refresh
+    e.preventDefault();
 
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    const res = await fetch("/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email, password })
-    });
+    console.log(`Attempting login for role: ${currentRole}`); // Verification log
 
-    const text = await res.text();
+    try {
+        const res = await fetch("/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ 
+                email: email.toLowerCase().trim(), 
+                password: password, 
+                role: currentRole 
+            })
+        });
 
-    if (res.ok) {
-        // ✅ THIS is what you're missing
-        window.location.href = "dashboard.html";
-    } else {
-        alert(text);
+        const data = await res.json();
+
+        if (res.ok) {
+            // Success: Move to the dashboard provided by the server
+            window.location.href = data.redirect;
+        } else {
+            // Failure: Show error (e.g., "Invalid password")
+            alert(data.message);
+        }
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        alert("Server connection failed. Is server.js running?");
     }
 });
 </script>

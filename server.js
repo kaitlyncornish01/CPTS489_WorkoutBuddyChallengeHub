@@ -22,19 +22,40 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-    const { email, password } = req.body;
-    db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
-        if (err || results.length === 0) return res.status(400).send("Invalid login");
+    const { email, password, role } = req.body;
+    
+    // Determine which table to query based on the role
+    let tableName = "users";
+    let redirectPath = "dashboard.html";
+
+    if (role === "admin") {
+        tableName = "admins";
+        redirectPath = "admindashboard.html";
+    } else if (role === "trainer") {
+        tableName = "trainers";
+        redirectPath = "trainer-dashboard.html";
+    }
+
+    const sql = `SELECT * FROM ${tableName} WHERE email = ?`;
+
+    db.query(sql, [email], async (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(400).json({ message: "Invalid " + role + " login" });
+        }
+
         const match = await bcrypt.compare(password, results[0].password);
-        if (!match) return res.status(400).send("Invalid login");
-        res.send("Login success");
+        if (!match) {
+            return res.status(400).json({ message: "Invalid password" });
+        }
+
+        // Send back the specific dashboard path for that role
+        res.json({ message: "Login success", redirect: redirectPath });
     });
 });
 
 /* ================= POSTS & INTERACTIONS ================= */
-/* ================= POSTS (Updated with user check) ================= */
 app.get("/posts", (req, res) => {
-    const currentUserId = 1; // Ideally from req.session.userId
+    const currentUserId = 1; 
     
     const postSql = `
         SELECT posts.*, users.name, 
@@ -181,7 +202,7 @@ app.post("/log-workout", (req, res) => {
     db.query(sql, [user_id, type, duration, calories, date], (err) => {
         if (err) return res.status(500).send("Error saving workout");
 
-        // 🔥 OPTIONAL: also create activity post
+        // Create activity post
         const postSql = `
             INSERT INTO posts (user_id, content)
             VALUES (?, ?)
