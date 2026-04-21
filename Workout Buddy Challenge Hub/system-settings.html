@@ -1,43 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>System Settings</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-</head>
-
-<body>
-
-<div class="container py-5">
-
 <h2>System Settings</h2>
 
-<form class="mt-4">
+<input id="siteName" placeholder="Site Name">
+<button onclick="save()">Save</button>
 
-<div class="mb-3">
-<label>Site Name</label>
-<input class="form-control" value="Workout Buddy">
-</div>
+<script>
+function save() {
+    const siteName = document.getElementById('siteName').value;
 
-<div class="mb-3">
-<label>Max Challenge Participants</label>
-<input class="form-control" value="500">
-</div>
-
-<div class="mb-3">
-<label>Enable Trainer Marketplace</label>
-<select class="form-control">
-<option>Enabled</option>
-<option>Disabled</option>
-</select>
-</div>
-
-<button class="btn btn-primary">Save Settings</button>
-
-</form>
-
-</div>
-
-</body>
-</html>
+    fetch('/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site_name: siteName })
+    }).then(() => alert("Saved"));
+}
+</script>

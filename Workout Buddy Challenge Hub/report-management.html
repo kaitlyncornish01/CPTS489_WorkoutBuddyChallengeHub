@@ -1,0 +1,30 @@
+<h2>Report Management</h2>
+<div id="reports"></div>
+
+<script>
+fetch('/reports')
+.then(res => res.json())
+.then(data => {
+    const container = document.getElementById('reports');
+
+    data.forEach(report => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <p><strong>${report.reason}</strong></p>
+            <button onclick="resolve(${report.id})">Resolve</button>
+            <button onclick="dismiss(${report.id})">Dismiss</button>
+        `;
+        container.appendChild(div);
+    });
+});
+
+function resolve(id) {
+    fetch(`/reports/${id}/resolve`, { method: 'POST' })
+        .then(() => location.reload());
+}
+
+function dismiss(id) {
+    fetch(`/reports/${id}/dismiss`, { method: 'POST' })
+        .then(() => location.reload());
+}
+</script>
