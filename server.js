@@ -33,33 +33,37 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", (req, res) => {
     const { email, password, role } = req.body;
+    const formattedEmail = email.toLowerCase().trim();
 
-    let tableName = "users";
-    let redirectPath = "dashboard.html";
+    // Always look in the "users" table
+    const sql = `SELECT * FROM users WHERE email = ?`;
 
-    if (role === "admin") {
-        tableName = "admins";
-        redirectPath = "admindashboard.html";
-    } else if (role === "trainer") {
-        tableName = "trainers";
-        redirectPath = "trainer-dashboard.html";
-    }
-
-    const sql = `SELECT * FROM ${tableName} WHERE email = ?`;
-
-    db.query(sql, [email], async (err, results) => {
+    db.query(sql, [formattedEmail], async (err, results) => {
         if (err || results.length === 0) {
-            return res.status(400).json({ message: "Invalid " + role + " login" });
+            return res.status(400).json({ message: "Invalid login" });
         }
 
-        const match = await bcrypt.compare(password, results[0].password);
+        const user = results[0];
+
+        // Check if the password matches
+        const match = await bcrypt.compare(password, user.password);
         if (!match) {
             return res.status(400).json({ message: "Invalid password" });
         }
 
-        // ⭐ Save logged-in user ID in session ⭐
-        req.session.userId = results[0].id;
-        req.session.role = role;
+        // Check if the user's role in the DB matches the login portal they used
+        if (user.role !== role) {
+            return res.status(403).json({ message: `This account is not authorized as a ${role}` });
+        }
+
+        // Set Session
+        req.session.userId = user.id;
+        req.session.role = user.role;
+
+        // Determine redirect based on the role stored in DB
+        let redirectPath = "dashboard.html";
+        if (user.role === "admin") redirectPath = "admindashboard.html";
+        if (user.role === "trainer") redirectPath = "trainer-dashboard.html";
 
         res.json({ message: "Login success", redirect: redirectPath });
     });
