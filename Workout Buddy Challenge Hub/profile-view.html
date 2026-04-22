@@ -79,13 +79,13 @@
     async function loadProfile() {
         try {
             // 1. Fetch Name and Bio
-            const userRes = await fetch(`/profile/${currentUserId}`);
+            const userRes = await fetch(`/profile/`);
             const user = await userRes.json();
             document.getElementById("display-name").innerText = user.name;
             document.getElementById("display-bio").innerText = user.bio || "Staying consistent and motivated on the fitness journey.";
 
             // 2. Fetch Live Database Stats
-            const statsRes = await fetch(`/profile-stats/${currentUserId}`);
+            const statsRes = await fetch(`/profile-stats/`);
             const stats = await statsRes.json();
 
             // 3. Update Stats UI

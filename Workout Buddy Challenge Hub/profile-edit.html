@@ -49,8 +49,6 @@
 </div>
 
 <script>
-    const currentUserId = 1;
-
     // Load existing data from database
     async function loadData() {
         try {
@@ -76,7 +74,7 @@
         };
 
         try {
-            const res = await fetch(`/profile/${currentUserId}`, {
+            const res = await fetch(`/profile/`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(updatedData)

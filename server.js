@@ -3,12 +3,22 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
 const db = require("./db");
 const path = require("path");
+const session = require("express-session");
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "Workout Buddy Challenge Hub")));
+
+app.use(
+    session({
+        secret: "supersecretkey",
+        resave: false,
+        saveUninitialized: true,
+        cookie: { secure: false }
+    })
+);
 
 /* ================= AUTH ROUTES ================= */
 app.post("/register", async (req, res) => {
@@ -23,8 +33,7 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", (req, res) => {
     const { email, password, role } = req.body;
-    
-    // Determine which table to query based on the role
+
     let tableName = "users";
     let redirectPath = "dashboard.html";
 
@@ -48,15 +57,19 @@ app.post("/login", (req, res) => {
             return res.status(400).json({ message: "Invalid password" });
         }
 
-        // Send back the specific dashboard path for that role
+        // ⭐ Save logged-in user ID in session ⭐
+        req.session.userId = results[0].id;
+        req.session.role = role;
+
         res.json({ message: "Login success", redirect: redirectPath });
     });
 });
 
 /* ================= POSTS & INTERACTIONS ================= */
 app.get("/posts", (req, res) => {
-    const currentUserId = 1; 
-    
+    const currentUserId = req.session.userId;
+    if (!currentUserId) return res.status(401).send("Not logged in");
+
     const postSql = `
         SELECT posts.*, users.name, 
         (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count,
@@ -82,7 +95,11 @@ app.get("/posts", (req, res) => {
 });
 
 app.post("/like", (req, res) => {
-    const { user_id, post_id } = req.body;
+    const user_id = req.session.userId;
+    const { post_id } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
+
     db.query("INSERT IGNORE INTO likes (user_id, post_id) VALUES (?, ?)", [user_id, post_id], (err) => {
         if (err) return res.status(500).send("Error");
         res.send("Liked");
@@ -90,7 +107,11 @@ app.post("/like", (req, res) => {
 });
 
 app.post("/unlike", (req, res) => {
-    const { user_id, post_id } = req.body;
+    const user_id = req.session.userId;
+    const { post_id } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
+
     db.query("DELETE FROM likes WHERE user_id = ? AND post_id = ?", [user_id, post_id], (err) => {
         if (err) return res.status(500).send("Error");
         res.send("Unliked");
@@ -98,7 +119,11 @@ app.post("/unlike", (req, res) => {
 });
 
 app.post("/comment", (req, res) => {
-    const { user_id, post_id, comment } = req.body;
+    const user_id = req.session.userId;
+    const { post_id, comment } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
+
     db.query("INSERT INTO comments (user_id, post_id, comment) VALUES (?, ?, ?)", [user_id, post_id, comment], (err) => {
         if (err) return res.status(500).send("Error");
         res.send("Added");
@@ -107,9 +132,11 @@ app.post("/comment", (req, res) => {
 
 /* ================= DELETE COMMENT ================= */
 app.post("/delete-comment", (req, res) => {
-    const { comment_id, user_id } = req.body;
-    
-    // Safety check: ensure the comment belongs to the user
+    const user_id = req.session.userId;
+    const { comment_id } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
+
     db.query("DELETE FROM comments WHERE id = ? AND user_id = ?", [comment_id, user_id], (err, result) => {
         if (err) return res.status(500).send("Error");
         if (result.affectedRows === 0) return res.status(403).send("Unauthorized");
@@ -119,7 +146,6 @@ app.post("/delete-comment", (req, res) => {
 
 /* ================= CHALLENGES ================= */
 app.get("/challenges", (req, res) => {
-    // Ordering by start_date by default
     const sql = "SELECT * FROM challenges ORDER BY start_date DESC";
 
     db.query(sql, (err, results) => {
@@ -134,7 +160,9 @@ app.get("/challenges", (req, res) => {
 /* ================= ADD CHALLENGE BY ID ================= */
 app.get("/challenge/:id", (req, res) => {
     const challengeId = req.params.id;
-    const userId = 1; // Assuming user_id 1 for now
+    const userId = req.session.userId;
+
+    if (!userId) return res.status(401).send("Not logged in");
 
     const sql = `
         SELECT c.*, 
@@ -150,7 +178,10 @@ app.get("/challenge/:id", (req, res) => {
 
 /* ================= Join Challenge ================= */
 app.post("/join-challenge", (req, res) => {
-    const { user_id, challenge_id } = req.body;
+    const user_id = req.session.userId;
+    const { challenge_id } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
 
     const checkSql = `
         SELECT * FROM challenge_participants 
@@ -176,7 +207,10 @@ app.post("/join-challenge", (req, res) => {
 
 /* ================= UNJOIN CHALLENGE ================= */
 app.post("/unjoin-challenge", (req, res) => {
-    const { user_id, challenge_id } = req.body;
+    const user_id = req.session.userId;
+    const { challenge_id } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
 
     const sql = "DELETE FROM challenge_participants WHERE user_id = ? AND challenge_id = ?";
 
@@ -188,7 +222,10 @@ app.post("/unjoin-challenge", (req, res) => {
 
 /* ================= LOG WORKOUT ================= */
 app.post("/log-workout", (req, res) => {
-    const { user_id, type, duration, calories, date } = req.body;
+    const user_id = req.session.userId;
+    const { type, duration, calories, date } = req.body;
+
+    if (!user_id) return res.status(401).send("Not logged in");
 
     if (!type || !duration || !date) {
         return res.status(400).send("Missing required fields");
@@ -202,7 +239,6 @@ app.post("/log-workout", (req, res) => {
     db.query(sql, [user_id, type, duration, calories, date], (err) => {
         if (err) return res.status(500).send("Error saving workout");
 
-        // Create activity post
         const postSql = `
             INSERT INTO posts (user_id, content)
             VALUES (?, ?)
@@ -217,8 +253,11 @@ app.post("/log-workout", (req, res) => {
 });
 
 /* ================= DASHBOARD: GET JOINED CHALLENGES ================= */
-app.get("/user-challenges/:userId", (req, res) => {
-    const userId = req.params.userId;
+app.get("/user-challenges", (req, res) => {
+    const userId = req.session.userId;
+
+    if (!userId) return res.status(401).send("Not logged in");
+
     const sql = `
         SELECT challenges.* FROM challenges 
         JOIN challenge_participants ON challenges.id = challenge_participants.challenge_id 
@@ -232,10 +271,12 @@ app.get("/user-challenges/:userId", (req, res) => {
 });
 
 /* ================= GET PROFILE ================= */
-app.get("/profile/:id", (req, res) => {
-    const id = req.params.id;
+app.get("/profile", (req, res) => {
+    const id = req.session.userId;
 
-    db.query("SELECT id, name, email, bio FROM users WHERE id = ?", [id], (err, results) => {
+    if (!id) return res.status(401).send("Not logged in");
+
+    db.query("SELECT id, name, email, bio, profile_pic FROM users WHERE id = ?", [id], (err, results) => {
         if (err || results.length === 0) {
             return res.status(404).send("User not found");
         }
@@ -245,9 +286,11 @@ app.get("/profile/:id", (req, res) => {
 });
 
 /* ================= UPDATE PROFILE ================= */
-app.put("/profile/:id", (req, res) => {
-    const id = req.params.id;
+app.put("/profile", (req, res) => {
+    const id = req.session.userId;
     const { name, bio, profile_pic } = req.body;
+
+    if (!id) return res.status(401).send("Not logged in");
 
     const sql = "UPDATE users SET name = ?, bio = ?, profile_pic = ? WHERE id = ?";
 
@@ -258,10 +301,11 @@ app.put("/profile/:id", (req, res) => {
 });
 
 /* ================= PROFILE STATS ================= */
-app.get("/profile-stats/:id", (req, res) => {
-    const userId = req.params.id;
+app.get("/profile-stats", (req, res) => {
+    const userId = req.session.userId;
 
-    // We run three queries to get the different counts
+    if (!userId) return res.status(401).send("Not logged in");
+
     const workoutCountSql = "SELECT COUNT(*) AS totalWorkouts FROM workouts WHERE user_id = ?";
     const challengeCountSql = "SELECT COUNT(*) AS activeChallenges FROM challenge_participants WHERE user_id = ?";
     
@@ -271,8 +315,6 @@ app.get("/profile-stats/:id", (req, res) => {
         db.query(challengeCountSql, [userId], (err, challengeRes) => {
             if (err) return res.status(500).send("Error");
 
-            // For now, we'll keep completion rate as a simple calculation 
-            // or a fixed logic until you have a 'goals' table
             const total = workoutRes[0].totalWorkouts;
             const completionRate = total > 0 ? Math.min(100, total * 5) : 0; 
 

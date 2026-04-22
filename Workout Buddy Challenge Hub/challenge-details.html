@@ -30,7 +30,6 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const challengeId = urlParams.get('id');
-    const currentUserId = 1; // Assuming user_id 1 matches your database
     let currentlyJoined = false; 
 
     async function loadChallenge() {
@@ -106,7 +105,7 @@
             const res = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_id: currentUserId, challenge_id: challengeId })
+                body: JSON.stringify({ challenge_id: challengeId })
             });
 
             if (res.ok) {

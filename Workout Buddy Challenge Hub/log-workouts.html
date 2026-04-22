@@ -68,13 +68,11 @@
 
     const workoutForm = document.getElementById('workoutForm');
     const statusMsg = document.getElementById('statusMsg');
-    const currentUserId = 1; // Assuming user_id 1
 
     workoutForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const workoutData = {
-            user_id: currentUserId,
             type: document.getElementById('type').value,
             duration: document.getElementById('duration').value,
             calories: document.getElementById('calories').value || 0,
