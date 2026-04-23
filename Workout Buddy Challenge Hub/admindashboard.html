@@ -28,26 +28,26 @@
     <div class="row g-4 mb-5">
         <div class="col-md-3">
             <div class="card-custom text-center">
-                <div style="font-size:2rem;font-weight:700;color:#5c4a3d;">1,284</div>
+                <div id="stat-users" style="font-size:2rem;font-weight:700;color:#5c4a3d;">0</div>
                 <div style="color:#709770;font-weight:600;">Total Users</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card-custom text-center">
-                <div style="font-size:2rem;font-weight:700;color:#5c4a3d;">47</div>
+                <div id="stat-challenges" style="font-size:2rem;font-weight:700;color:#5c4a3d;">0</div>
                 <div style="color:#709770;font-weight:600;">Active Challenges</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card-custom text-center">
-                <div style="font-size:2rem;font-weight:700;color:#e6bf4d;">12</div>
+                <div id="stat-pending-reports" style="font-size:2rem;font-weight:700;color:#e6bf4d;">0</div>
                 <div style="color:#709770;font-weight:600;">Pending Reports</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card-custom text-center">
-                <div style="font-size:2rem;font-weight:700;color:#5c4a3d;">$3,840</div>
-                <div style="color:#709770;font-weight:600;">Monthly Revenue</div>
+                <div id="stat-workouts" style="font-size:2rem;font-weight:700;color:#5c4a3d;">0</div>
+                <div style="color:#709770;font-weight:600;">Total Workouts</div>
             </div>
         </div>
     </div>
@@ -64,7 +64,7 @@
             <div class="card-custom text-center">
                 <h5 class="brand-title mb-3">Reports</h5>
                 <p class="text-muted mb-4">Review and resolve pending content reports.</p>
-                <a href="report-management.html" class="btn btn-primary-custom w-100">View Reports</a>
+                <a href="reports.html" class="btn btn-primary-custom w-100">View Reports</a>
             </div>
         </div>
         <div class="col-md-3">
@@ -86,39 +86,85 @@
     <div class="card-custom">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="brand-title mb-0">Recent Pending Reports</h5>
-            <a href="report-management.html" class="btn btn-outline-secondary btn-sm">View All</a>
+            <a href="reports.html" class="btn btn-outline-secondary btn-sm">View All</a>
         </div>
-
-        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>Post Report</strong>
-                    <p class="text-muted mb-0" style="font-size:0.875rem;">Reported by: Alex R. &bull; Reason: Inappropriate content</p>
-                </div>
-                <a href="report-management.html" class="btn btn-primary-custom btn-sm">Review</a>
-            </div>
-        </div>
-        
-        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>User Report</strong>
-                    <p class="text-muted mb-0" style="font-size:0.875rem;">Reported by: Jordan T. &bull; Reason: Harassment</p>
-                </div>
-                <a href="report-management.html" class="btn btn-primary-custom btn-sm">Review</a>
-            </div>
-        </div>
-
-        <div class="p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>Comment Report</strong>
-                    <p class="text-muted mb-0" style="font-size:0.875rem;">Reported by: Casey L. &bull; Reason: Spam</p>
-                </div>
-                <a href="report-management.html" class="btn btn-primary-custom btn-sm">Review</a>
-            </div>
+        <div id="recentReports">
+            <p class="text-muted mb-0">Loading pending reports...</p>
         </div>
     </div>
 </div>
+
+<script>
+    async function requestJson(url, options = {}) {
+        const response = await fetch(url, {
+            headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+            ...options
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            window.location.href = "landing.html";
+            throw new Error("Unauthorized");
+        }
+
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : null;
+
+        if (!response.ok) {
+            throw new Error(data?.error || "Request failed");
+        }
+
+        return data;
+    }
+
+    function formatReportType(report) {
+        if (report.content_type === "POST") return "Post Report";
+        if (report.content_type === "COMMENT") return "Comment Report";
+        if (report.content_type === "PROFILE") return "Profile Report";
+        return "Content Report";
+    }
+
+    function reportDetail(report) {
+        const reasons = report.reasons || "No reason selected";
+        return `Reported by: ${report.reporter_name} &bull; Reason: ${reasons}`;
+    }
+
+    async function loadAdminDashboard() {
+        try {
+            const [stats, pendingReports] = await Promise.all([
+                requestJson("/admin/stats"),
+                requestJson("/admin/reports?status=ACTIVE")
+            ]);
+
+            document.getElementById("stat-users").textContent = stats.users || 0;
+            document.getElementById("stat-challenges").textContent = stats.challenges || 0;
+            document.getElementById("stat-workouts").textContent = stats.workouts || 0;
+            document.getElementById("stat-pending-reports").textContent = pendingReports.length;
+
+            const container = document.getElementById("recentReports");
+            if (pendingReports.length === 0) {
+                container.innerHTML = '<p class="text-muted mb-0">No pending reports.</p>';
+                return;
+            }
+
+            container.innerHTML = pendingReports.slice(0, 3).map(report => `
+                <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${formatReportType(report)}</strong>
+                            <p class="text-muted mb-0" style="font-size:0.875rem;">${reportDetail(report)}</p>
+                        </div>
+                        <a href="reports.html" class="btn btn-primary-custom btn-sm">Review</a>
+                    </div>
+                </div>
+            `).join("");
+        } catch (err) {
+            if (err.message === "Unauthorized") return;
+            document.getElementById("recentReports").innerHTML = '<p class="text-danger mb-0">Unable to load dashboard data.</p>';
+            console.error("Admin dashboard load error:", err);
+        }
+    }
+
+    loadAdminDashboard();
+</script>
 </body>
 </html>

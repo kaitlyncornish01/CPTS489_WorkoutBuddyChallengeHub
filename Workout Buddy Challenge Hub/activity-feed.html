@@ -23,7 +23,39 @@
         <div id="feed"></div>
     </div>
 
+    <div id="reportModal" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0, 0, 0, 0.35); z-index: 1050;">
+        <div class="d-flex h-100 align-items-center justify-content-center p-3">
+            <div class="card-custom w-100" style="max-width: 560px;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="brand-title mb-0">Report Post</h5>
+                    <button id="closeReportModalButton" class="btn btn-sm btn-outline-secondary" type="button">Close</button>
+                </div>
+                <p class="text-muted small mb-3">Select one or more reasons. Add details if needed.</p>
+                <input type="hidden" id="reportPostId">
+
+                <div id="reportReasonList" class="mb-3">
+                    <p class="text-muted mb-0">Loading reasons...</p>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reportText" class="form-label small fw-semibold">Details (optional)</label>
+                    <textarea id="reportText" class="form-control" rows="3" maxlength="500" placeholder="Add context for admins..."></textarea>
+                </div>
+
+                <div id="reportError" class="text-danger small mb-2 d-none"></div>
+                <div id="reportSuccess" class="text-success small mb-2 d-none"></div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button id="cancelReportButton" class="btn btn-outline-secondary" type="button">Cancel</button>
+                    <button id="submitReportButton" class="btn btn-primary-custom" type="button">Submit Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let reportReasons = null;
+
         function escapeHtml(value) {
             const element = document.createElement('div');
             element.textContent = value || '';
@@ -32,6 +64,120 @@
 
         function userProfileLink(userId, label) {
             return `<a href="user-profile.html?userId=${userId}" class="brand-title text-decoration-none">${escapeHtml(label)}</a>`;
+        }
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, {
+                headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+                ...options
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = "landing.html";
+                throw new Error("Unauthorized");
+            }
+
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : null;
+
+            if (!response.ok) {
+                throw new Error(data?.error || "Request failed");
+            }
+
+            return data;
+        }
+
+        function showReportModal() {
+            document.getElementById("reportModal").classList.remove("d-none");
+        }
+
+        function hideReportModal() {
+            document.getElementById("reportModal").classList.add("d-none");
+        }
+
+        function setReportFeedback(errorMessage, successMessage) {
+            const errorEl = document.getElementById("reportError");
+            const successEl = document.getElementById("reportSuccess");
+
+            errorEl.textContent = errorMessage || "";
+            successEl.textContent = successMessage || "";
+
+            errorEl.classList.toggle("d-none", !errorMessage);
+            successEl.classList.toggle("d-none", !successMessage);
+        }
+
+        function renderReportReasons(reasons) {
+            const container = document.getElementById("reportReasonList");
+
+            if (!reasons.length) {
+                container.innerHTML = '<p class="text-muted mb-0">No reasons available right now.</p>';
+                return;
+            }
+
+            container.innerHTML = reasons.map(reason => `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" value="${reason.id}" id="report-reason-${reason.id}">
+                    <label class="form-check-label" for="report-reason-${reason.id}">${escapeHtml(reason.reason_label)}</label>
+                </div>
+            `).join("");
+        }
+
+        async function ensureReportReasons() {
+            if (reportReasons) return reportReasons;
+            reportReasons = await requestJson("/report-reasons");
+            renderReportReasons(reportReasons);
+            return reportReasons;
+        }
+
+        async function openReportModal(postId) {
+            document.getElementById("reportPostId").value = String(postId);
+            document.getElementById("reportText").value = "";
+            setReportFeedback("", "");
+            showReportModal();
+
+            try {
+                await ensureReportReasons();
+            } catch (err) {
+                if (err.message === "Unauthorized") return;
+                document.getElementById("reportReasonList").innerHTML = '<p class="text-danger mb-0">Failed to load report reasons.</p>';
+                setReportFeedback("You can try again in a moment.", "");
+            }
+        }
+
+        async function submitPostReport() {
+            const postId = Number(document.getElementById("reportPostId").value);
+            const reportText = document.getElementById("reportText").value.trim();
+            const selectedReasonIds = Array.from(document.querySelectorAll('#reportReasonList input[type="checkbox"]:checked'))
+                .map(el => Number(el.value))
+                .filter(Number.isInteger);
+
+            if (!Number.isInteger(postId) || postId <= 0) {
+                setReportFeedback("Invalid post selected.", "");
+                return;
+            }
+
+            if (selectedReasonIds.length === 0) {
+                setReportFeedback("Select at least one reason.", "");
+                return;
+            }
+
+            try {
+                await requestJson("/report-content", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        content_type: "POST",
+                        content_id: postId,
+                        reason_ids: selectedReasonIds,
+                        report_text: reportText || null
+                    })
+                });
+
+                setReportFeedback("", "Report submitted.");
+                setTimeout(() => hideReportModal(), 700);
+            } catch (err) {
+                if (err.message === "Unauthorized") return;
+                setReportFeedback(err.message || "Failed to submit report.", "");
+            }
         }
 
         async function loadPosts() {
@@ -59,6 +205,9 @@
                                 ${likeColor} 
                                 onclick="toggleLike(${post.id}, ${isLiked})">
                             ${heartIcon} ${isLiked ? 'Liked' : 'Like'}
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="openReportModal(${post.id})">
+                            Report
                         </button>
                     </div>
 
@@ -89,9 +238,8 @@
 
         async function toggleLike(postId, isLiked) {
             const endpoint = isLiked ? "/unlike" : "/like";
-            await fetch(endpoint, {
+            await requestJson(endpoint, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ post_id: postId })
             });
             loadPosts();
@@ -99,26 +247,34 @@
 
         async function deleteComment(commentId) {
             if (!confirm("Delete your comment?")) return;
-            const res = await fetch("/delete-comment", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ comment_id: commentId })
-            });
-            if (res.status === 403) alert("You can only delete your own comments!");
+            try {
+                await requestJson("/delete-comment", {
+                    method: "POST",
+                    body: JSON.stringify({ comment_id: commentId })
+                });
+            } catch (err) {
+                if (err.message === "Unauthorized") return;
+                alert(err.message || "You can only delete your own comments!");
+            }
             loadPosts();
         }
 
         async function addComment(postId) {
             const input = document.getElementById(`comment-${postId}`);
             if (!input.value) return;
-            await fetch("/comment", {
+            await requestJson("/comment", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ post_id: postId, comment: input.value })
             });
             input.value = "";
             loadPosts();
         }
+
+        document.getElementById("closeReportModalButton").addEventListener("click", hideReportModal);
+        document.getElementById("cancelReportButton").addEventListener("click", hideReportModal);
+        document.getElementById("submitReportButton").addEventListener("click", submitPostReport);
+
+        window.openReportModal = openReportModal;
         
         loadPosts();
     </script>

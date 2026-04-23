@@ -20,6 +20,92 @@ app.use(
     })
 );
 
+function requireLoggedIn(req, res) {
+    if (!req.session.userId) {
+        res.status(401).json({ error: "Not logged in" });
+        return false;
+    }
+    return true;
+}
+
+function requireAdmin(req, res) {
+    if (!req.session.userId) {
+        res.status(401).json({ error: "Not logged in" });
+        return false;
+    }
+    if (req.session.role !== "admin") {
+        res.status(403).json({ error: "Admin access required" });
+        return false;
+    }
+    return true;
+}
+
+function dbQuery(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+            if (err) return reject(err);
+            resolve(results);
+        });
+    });
+}
+
+async function getOrCreateContentItem(contentType, contentId) {
+    if (contentType === "POST") {
+        const posts = await dbQuery("SELECT id FROM posts WHERE id = ?", [contentId]);
+        if (posts.length === 0) {
+            const error = new Error("Post not found");
+            error.status = 404;
+            throw error;
+        }
+
+        await dbQuery(
+            "INSERT INTO content_items (content_type, post_id, comment_id, profile_user_id) VALUES ('POST', ?, NULL, NULL) ON DUPLICATE KEY UPDATE content_type = VALUES(content_type)",
+            [contentId]
+        );
+
+        const rows = await dbQuery("SELECT id FROM content_items WHERE post_id = ?", [contentId]);
+        return rows[0].id;
+    }
+
+    if (contentType === "COMMENT") {
+        const comments = await dbQuery("SELECT id FROM comments WHERE id = ?", [contentId]);
+        if (comments.length === 0) {
+            const error = new Error("Comment not found");
+            error.status = 404;
+            throw error;
+        }
+
+        await dbQuery(
+            "INSERT INTO content_items (content_type, post_id, comment_id, profile_user_id) VALUES ('COMMENT', NULL, ?, NULL) ON DUPLICATE KEY UPDATE content_type = VALUES(content_type)",
+            [contentId]
+        );
+
+        const rows = await dbQuery("SELECT id FROM content_items WHERE comment_id = ?", [contentId]);
+        return rows[0].id;
+    }
+
+    if (contentType === "PROFILE") {
+        const users = await dbQuery("SELECT id FROM users WHERE id = ?", [contentId]);
+        if (users.length === 0) {
+            const error = new Error("Profile not found");
+            error.status = 404;
+            throw error;
+        }
+
+        await dbQuery(
+            "INSERT INTO content_items (content_type, post_id, comment_id, profile_user_id) VALUES ('PROFILE', NULL, NULL, ?) ON DUPLICATE KEY UPDATE content_type = VALUES(content_type)",
+            [contentId]
+        );
+
+        const rows = await dbQuery("SELECT id FROM content_items WHERE profile_user_id = ?", [contentId]);
+        return rows[0].id;
+    }
+
+    const error = new Error("Invalid content type");
+    error.status = 400;
+    throw error;
+}
+
 /* ================= AUTH ROUTES ================= */
 app.post("/register", async (req, res) => {
     const { name, email, password } = req.body;
@@ -82,15 +168,51 @@ app.get("/posts", (req, res) => {
         (SELECT COUNT(*) FROM likes WHERE post_id = posts.id AND user_id = ?) AS user_has_liked
         FROM posts 
         JOIN users ON posts.user_id = users.id
+                WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM user_hidden_content uhc
+                        JOIN content_items ci ON ci.id = uhc.content_item_id
+                        WHERE uhc.user_id = ?
+                            AND uhc.unhidden_at IS NULL
+                            AND ci.post_id = posts.id
+                )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM user_hidden_content uhc
+                        JOIN content_items ci ON ci.id = uhc.content_item_id
+                        WHERE uhc.user_id = ?
+                            AND uhc.unhidden_at IS NULL
+                            AND ci.profile_user_id = posts.user_id
+                )
         GROUP BY posts.id
         ORDER BY posts.created_at DESC
     `;
 
-    db.query(postSql, [currentUserId], (err, posts) => {
+        db.query(postSql, [currentUserId, currentUserId, currentUserId], (err, posts) => {
         if (err) return res.status(500).send("Error");
 
-        const commentSql = `SELECT comments.*, users.name FROM comments JOIN users ON comments.user_id = users.id`;
-        db.query(commentSql, (err, comments) => {
+                const commentSql = `
+                        SELECT comments.*, users.name
+                        FROM comments
+                        JOIN users ON comments.user_id = users.id
+                        WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM user_hidden_content uhc
+                                JOIN content_items ci ON ci.id = uhc.content_item_id
+                                WHERE uhc.user_id = ?
+                                    AND uhc.unhidden_at IS NULL
+                                    AND ci.comment_id = comments.id
+                        )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM user_hidden_content uhc
+                                JOIN content_items ci ON ci.id = uhc.content_item_id
+                                WHERE uhc.user_id = ?
+                                    AND uhc.unhidden_at IS NULL
+                                    AND ci.profile_user_id = comments.user_id
+                        )
+                `;
+                db.query(commentSql, [currentUserId, currentUserId], (err, comments) => {
             const postsWithComments = posts.map(post => ({
                 ...post,
                 comments: comments.filter(c => c.post_id === post.id)
@@ -333,40 +455,338 @@ app.get("/profile-stats", (req, res) => {
     });
 });
 
-/* ================= GET ALL REPORTS ================= */
-app.get('/reports', (req, res) => {
-    db.query("SELECT * FROM reports WHERE status = 'Pending'", (err, results) => {
-        if (err) return res.status(500).send(err);
-        res.json(results);
-    });
+/* ================= REPORTING ================= */
+app.get("/report-reasons", async (req, res) => {
+    if (!requireLoggedIn(req, res)) return;
+
+    try {
+        const reasons = await dbQuery(
+            "SELECT id, reason_code, reason_label FROM report_reasons WHERE is_active = 1 ORDER BY reason_label ASC"
+        );
+        res.json(reasons);
+    } catch (err) {
+        console.error("Load report reasons error:", err);
+        res.status(500).json({ error: "Failed to load report reasons" });
+    }
 });
 
-// Resolve report
-app.post('/reports/:id/resolve', (req, res) => {
-    const reportId = req.params.id;
+app.post("/report-content", async (req, res) => {
+    if (!requireLoggedIn(req, res)) return;
 
-    db.query(
-        "UPDATE reports SET status = 'Resolved' WHERE id = ?",
-        [reportId],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Report resolved");
+    try {
+        const reporterUserId = req.session.userId;
+        const { content_type, content_id, reason_ids, report_text } = req.body;
+        const normalizedType = String(content_type || "").toUpperCase();
+        const contentId = Number(content_id);
+        const parsedReasonIds = Array.isArray(reason_ids)
+            ? reason_ids.map(Number).filter(Number.isInteger)
+            : [];
+        const reportText = typeof report_text === "string" ? report_text.trim() : null;
+
+        if (!["POST", "COMMENT", "PROFILE"].includes(normalizedType)) {
+            return res.status(400).json({ error: "Invalid content_type" });
         }
-    );
+
+        if (!Number.isInteger(contentId) || contentId <= 0) {
+            return res.status(400).json({ error: "Invalid content_id" });
+        }
+
+        if (parsedReasonIds.length === 0) {
+            return res.status(400).json({ error: "At least one report reason is required" });
+        }
+
+        if (reportText && reportText.length > 500) {
+            return res.status(400).json({ error: "Report text cannot exceed 500 characters" });
+        }
+
+        const contentItemId = await getOrCreateContentItem(normalizedType, contentId);
+        const reasonIdsJson = JSON.stringify(parsedReasonIds);
+
+        await dbQuery("CALL sp_submit_content_report(?, ?, ?, ?)", [
+            reporterUserId,
+            contentItemId,
+            reportText || null,
+            reasonIdsJson
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: "Report submitted successfully"
+        });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ error: err.message });
+        }
+
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({ error: "You cannot report the same item twice." });
+        }
+
+        if (err.code === "ER_SIGNAL_EXCEPTION") {
+            return res.status(400).json({ error: err.sqlMessage || "Invalid report submission" });
+        }
+
+        console.error("Submit report error:", err);
+        res.status(500).json({ error: "Failed to submit report" });
+    }
 });
 
-// Dismiss report
-app.post('/reports/:id/dismiss', (req, res) => {
-    const reportId = req.params.id;
+app.post("/unhide-content", async (req, res) => {
+    if (!requireLoggedIn(req, res)) return;
 
-    db.query(
-        "UPDATE reports SET status = 'Dismissed' WHERE id = ?",
-        [reportId],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Report dismissed");
+    try {
+        const { content_type, content_id } = req.body;
+        const normalizedType = String(content_type || "").toUpperCase();
+        const contentId = Number(content_id);
+
+        if (!["POST", "COMMENT", "PROFILE"].includes(normalizedType)) {
+            return res.status(400).json({ error: "Invalid content_type" });
         }
-    );
+
+        if (!Number.isInteger(contentId) || contentId <= 0) {
+            return res.status(400).json({ error: "Invalid content_id" });
+        }
+
+        const contentItemId = await getOrCreateContentItem(normalizedType, contentId);
+        await dbQuery("CALL sp_unhide_content(?, ?, ?, 'USER')", [
+            req.session.userId,
+            contentItemId,
+            req.session.userId
+        ]);
+
+        res.json({ success: true, message: "Content unhidden" });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ error: err.message });
+        }
+
+        if (err.code === "ER_SIGNAL_EXCEPTION") {
+            return res.status(400).json({ error: err.sqlMessage || "Unable to unhide content" });
+        }
+
+        console.error("Unhide content error:", err);
+        res.status(500).json({ error: "Failed to unhide content" });
+    }
+});
+
+/* ================= ADMIN REPORT MANAGEMENT ================= */
+app.get("/reports", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    try {
+        const requestedStatus = String(req.query.status || "ACTIVE").toUpperCase();
+        const allowedStatuses = ["ACTIVE", "IN_REVIEW", "RESOLVED", "REJECTED"];
+        const statusFilter = allowedStatuses.includes(requestedStatus) ? requestedStatus : "ACTIVE";
+
+        const reports = await dbQuery(
+            `
+            SELECT
+                cr.id,
+                cr.reporter_user_id,
+                reporter.name AS reporter_name,
+                cr.content_item_id,
+                ci.content_type,
+                ci.post_id,
+                ci.comment_id,
+                ci.profile_user_id,
+                cr.status_code,
+                cr.report_text,
+                cr.admin_notes,
+                cr.created_at,
+                GROUP_CONCAT(rr.reason_label ORDER BY rr.reason_label SEPARATOR ', ') AS reasons
+            FROM content_reports cr
+            JOIN users reporter ON reporter.id = cr.reporter_user_id
+            JOIN content_items ci ON ci.id = cr.content_item_id
+            LEFT JOIN content_report_reason_selections crrs ON crrs.report_id = cr.id
+            LEFT JOIN report_reasons rr ON rr.id = crrs.reason_id
+            WHERE cr.status_code = ?
+            GROUP BY
+                cr.id,
+                cr.reporter_user_id,
+                reporter.name,
+                cr.content_item_id,
+                ci.content_type,
+                ci.post_id,
+                ci.comment_id,
+                ci.profile_user_id,
+                cr.status_code,
+                cr.report_text,
+                cr.admin_notes,
+                cr.created_at
+            ORDER BY cr.created_at DESC
+            `,
+            [statusFilter]
+        );
+
+        res.json(reports);
+    } catch (err) {
+        console.error("Load reports error:", err);
+        res.status(500).json({ error: "Failed to load reports" });
+    }
+});
+
+app.get("/admin/reports", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    try {
+        const requestedStatus = String(req.query.status || "ACTIVE").toUpperCase();
+        const allowedStatuses = ["ACTIVE", "IN_REVIEW", "RESOLVED", "REJECTED"];
+        const statusFilter = allowedStatuses.includes(requestedStatus) ? requestedStatus : "ACTIVE";
+
+        const reports = await dbQuery(
+            `
+            SELECT
+                cr.id,
+                cr.reporter_user_id,
+                reporter.name AS reporter_name,
+                cr.content_item_id,
+                ci.content_type,
+                ci.post_id,
+                ci.comment_id,
+                ci.profile_user_id,
+                cr.status_code,
+                cr.report_text,
+                cr.admin_notes,
+                cr.created_at,
+                GROUP_CONCAT(rr.reason_label ORDER BY rr.reason_label SEPARATOR ', ') AS reasons
+            FROM content_reports cr
+            JOIN users reporter ON reporter.id = cr.reporter_user_id
+            JOIN content_items ci ON ci.id = cr.content_item_id
+            LEFT JOIN content_report_reason_selections crrs ON crrs.report_id = cr.id
+            LEFT JOIN report_reasons rr ON rr.id = crrs.reason_id
+            WHERE cr.status_code = ?
+            GROUP BY
+                cr.id,
+                cr.reporter_user_id,
+                reporter.name,
+                cr.content_item_id,
+                ci.content_type,
+                ci.post_id,
+                ci.comment_id,
+                ci.profile_user_id,
+                cr.status_code,
+                cr.report_text,
+                cr.admin_notes,
+                cr.created_at
+            ORDER BY cr.created_at DESC
+            `,
+            [statusFilter]
+        );
+
+        res.json(reports);
+    } catch (err) {
+        console.error("Load admin reports error:", err);
+        res.status(500).json({ error: "Failed to load reports" });
+    }
+});
+
+app.post("/reports/:id/resolve", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    try {
+        const reportId = Number(req.params.id);
+        const { admin_notes } = req.body;
+
+        if (!Number.isInteger(reportId) || reportId <= 0) {
+            return res.status(400).json({ error: "Invalid report ID" });
+        }
+
+        const rows = await dbQuery("SELECT status_code FROM content_reports WHERE id = ?", [reportId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "Report not found" });
+        }
+
+        const oldStatus = rows[0].status_code;
+        await dbQuery("UPDATE content_reports SET status_code = 'RESOLVED', admin_notes = ? WHERE id = ?", [
+            admin_notes || null,
+            reportId
+        ]);
+        await dbQuery(
+            "INSERT INTO content_report_status_history (report_id, old_status_code, new_status_code, changed_by_user_id, change_note) VALUES (?, ?, 'RESOLVED', ?, ?)",
+            [reportId, oldStatus, req.session.userId, admin_notes || null]
+        );
+
+        res.json({ success: true, message: "Report resolved" });
+    } catch (err) {
+        console.error("Resolve report error:", err);
+        res.status(500).json({ error: "Failed to resolve report" });
+    }
+});
+
+app.post("/reports/:id/dismiss", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    try {
+        const reportId = Number(req.params.id);
+        const { admin_notes } = req.body;
+
+        if (!Number.isInteger(reportId) || reportId <= 0) {
+            return res.status(400).json({ error: "Invalid report ID" });
+        }
+
+        const rows = await dbQuery("SELECT status_code FROM content_reports WHERE id = ?", [reportId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "Report not found" });
+        }
+
+        const oldStatus = rows[0].status_code;
+        await dbQuery("UPDATE content_reports SET status_code = 'REJECTED', admin_notes = ? WHERE id = ?", [
+            admin_notes || null,
+            reportId
+        ]);
+        await dbQuery(
+            "INSERT INTO content_report_status_history (report_id, old_status_code, new_status_code, changed_by_user_id, change_note) VALUES (?, ?, 'REJECTED', ?, ?)",
+            [reportId, oldStatus, req.session.userId, admin_notes || null]
+        );
+
+        res.json({ success: true, message: "Report dismissed" });
+    } catch (err) {
+        console.error("Dismiss report error:", err);
+        res.status(500).json({ error: "Failed to dismiss report" });
+    }
+});
+
+app.post("/admin/unhide-content", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    try {
+        const { user_id, content_type, content_id } = req.body;
+        const targetUserId = Number(user_id);
+        const normalizedType = String(content_type || "").toUpperCase();
+        const contentId = Number(content_id);
+
+        if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ error: "Invalid user_id" });
+        }
+
+        if (!["POST", "COMMENT", "PROFILE"].includes(normalizedType)) {
+            return res.status(400).json({ error: "Invalid content_type" });
+        }
+
+        if (!Number.isInteger(contentId) || contentId <= 0) {
+            return res.status(400).json({ error: "Invalid content_id" });
+        }
+
+        const contentItemId = await getOrCreateContentItem(normalizedType, contentId);
+        await dbQuery("CALL sp_unhide_content(?, ?, ?, 'ADMIN')", [
+            targetUserId,
+            contentItemId,
+            req.session.userId
+        ]);
+
+        res.json({ success: true, message: "Content unhidden for user" });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ error: err.message });
+        }
+
+        if (err.code === "ER_SIGNAL_EXCEPTION") {
+            return res.status(400).json({ error: err.sqlMessage || "Unable to unhide content" });
+        }
+
+        console.error("Admin unhide content error:", err);
+        res.status(500).json({ error: "Failed to unhide content" });
+    }
 });
 
 /* ================= PLATFORM ACTIVITY ================= */

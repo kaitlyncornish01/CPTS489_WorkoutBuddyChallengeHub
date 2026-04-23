@@ -259,10 +259,10 @@ UNLOCK TABLES;
 -- Table structure for table `friend_requests`
 --
 
-DROP TABLE IF EXISTS `friend_requests`;
+-- Guarded create for existing databases (non-destructive)
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `friend_requests` (
+CREATE TABLE IF NOT EXISTS `friend_requests` (
   `id` int NOT NULL AUTO_INCREMENT,
   `from_user_id` int NOT NULL,
   `to_user_id` int NOT NULL,
@@ -279,10 +279,10 @@ CREATE TABLE `friend_requests` (
 -- Table structure for table `friends`
 --
 
-DROP TABLE IF EXISTS `friends`;
+-- Guarded create for existing databases (non-destructive)
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `friends` (
+CREATE TABLE IF NOT EXISTS `friends` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id_1` int NOT NULL,
   `user_id_2` int NOT NULL,
@@ -298,10 +298,10 @@ CREATE TABLE `friends` (
 -- Table structure for table `muted_users`
 --
 
-DROP TABLE IF EXISTS `muted_users`;
+-- Guarded create for existing databases (non-destructive)
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `muted_users` (
+CREATE TABLE IF NOT EXISTS `muted_users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `muted_user_id` int NOT NULL,
