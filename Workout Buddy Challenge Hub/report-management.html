@@ -1,30 +1,171 @@
-<h2>Report Management</h2>
-<div id="reports"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Management - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .btn-primary-custom {
+            background-color: #709770;
+            border: none;
+            color: white;
+            transition: 0.3s;
+        }
+        .btn-primary-custom:hover {
+            background-color: #5c7c5c;
+            color: white;
+        }
+        .btn-ban {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            transition: 0.3s;
+        }
+        .btn-ban:hover {
+            background-color: #a71d2a;
+            color: white;
+        }
+        .report-card {
+            background-color: #f0ede8;
+            border-radius: 10px;
+            border-left: 5px solid #e6bf4d;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        /* Bigger and bolder labels */
+        .report-label {
+            font-weight: 700; /* Extra bold */
+            color: #5c4a3d;
+            font-size: 1.1rem; /* Bigger size */
+            margin-right: 8px;
+        }
+        .report-value {
+            color: #000;
+            font-weight: 700;
+            font-size: 1.1rem; /* Matching bigger size */
+        }
+        .reason-text {
+            color: #dc3545; /* Red for the violation reason */
+        }
+    </style>
+</head>
+<body>
 
-<script>
-fetch('/reports')
-.then(res => res.json())
-.then(data => {
-    const container = document.getElementById('reports');
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+        <a class="navbar-brand brand-title" href="admindashboard.html">Workout Buddy</a>
+        <div class="ms-auto">
+            <a class="nav-link d-inline me-3" href="usermanagement.html">Users</a>
+            <a class="nav-link d-inline me-3 active" href="report-management.html">Reports</a>
+            <a class="nav-link d-inline me-3" href="platform-activity.html">Activity</a>
+            <a class="nav-link d-inline me-3" href="site-statistics.html">Statistics</a>
+            <a class="nav-link d-inline me-3" href="system-settings.html">Settings</a>
+            <a class="nav-link d-inline" href="landing.html">Logout</a>
+        </div>
+    </nav>
 
-    data.forEach(report => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <p><strong>${report.reason}</strong></p>
-            <button onclick="resolve(${report.id})">Resolve</button>
-            <button onclick="dismiss(${report.id})">Dismiss</button>
-        `;
-        container.appendChild(div);
-    });
-});
+    <div class="container py-5">
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="brand-title">User Reports</h2>
+                <span class="badge bg-warning text-dark p-2" id="reportCount">0 Pending Reports</span>
+            </div>
+            <div class="gold-divider"></div>
+            <p class="gold-accent">Manage reported users and maintain community standards</p>
+        </div>
 
-function resolve(id) {
-    fetch(`/reports/${id}/resolve`, { method: 'POST' })
-        .then(() => location.reload());
-}
+        <div class="card-custom">
+            <div id="reportList">
+                <div class="text-center py-5">
+                    <p class="text-muted">Loading user reports...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-function dismiss(id) {
-    fetch(`/reports/${id}/dismiss`, { method: 'POST' })
-        .then(() => location.reload());
-}
-</script>
+    <script>
+        async function loadReports() {
+            const container = document.getElementById('reportList');
+            const countBadge = document.getElementById('reportCount');
+
+            try {
+                const response = await fetch('/reports');
+                if (!response.ok) throw new Error("Server Error");
+
+                const reports = await response.json();
+                container.innerHTML = ""; 
+                countBadge.innerText = `${reports.length} Pending Reports`;
+
+                if (reports.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <p class="text-muted mb-0">There are currently no user reports to look at.</p>
+                        </div>`;
+                    return;
+                }
+
+                reports.forEach(report => {
+                    const div = document.createElement('div');
+                    div.className = "report-card";
+                    
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="mb-3">
+                                    <span class="badge bg-secondary" style="font-size: 0.9rem;">Report ID: #${report.id}</span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <span class="report-label">Reported User:</span>
+                                    <span class="report-value">${report.reported_user || 'Unknown'}</span>
+                                </div>
+
+                                <div>
+                                    <span class="report-label">Reason:</span>
+                                    <span class="report-value reason-text">${report.reason}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button onclick="handleAction(${report.id}, 'resolve')" class="btn btn-primary-custom btn-sm px-4">Resolve</button>
+                                <button onclick="banUser('${report.reported_user}', ${report.id})" class="btn btn-ban btn-sm px-4">Ban User</button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+            } catch (err) {
+                container.innerHTML = `<p class="text-center text-danger py-5">Connection failed. Is the server running?</p>`;
+            }
+        }
+
+        async function handleAction(id, type) {
+            try {
+                const res = await fetch(`/reports/${id}/${type}`, { method: 'POST' });
+                if (res.ok) loadReports();
+            } catch (err) {
+                alert("Action failed.");
+            }
+        }
+
+        async function banUser(username, reportId) {
+            if (confirm(`Are you sure you want to permanently ban ${username}?`)) {
+                try {
+                    // Logic: Resolve the report and trigger ban
+                    const res = await fetch(`/reports/${reportId}/resolve`, { method: 'POST' });
+                    if (res.ok) {
+                        alert(`${username} has been banned.`);
+                        loadReports();
+                    }
+                } catch (err) {
+                    alert("Error processing ban.");
+                }
+            }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>
