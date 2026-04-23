@@ -334,25 +334,22 @@ app.get("/profile-stats", (req, res) => {
 });
 
 /* ================= GET ALL REPORTS ================= */
+// Fetch all pending reports
 app.get('/reports', (req, res) => {
-    db.query("SELECT * FROM reports WHERE status = 'Pending'", (err, results) => {
+    const sql = "SELECT * FROM reports WHERE status = 'Pending' ORDER BY created_at DESC";
+    db.query(sql, (err, results) => {
         if (err) return res.status(500).send(err);
         res.json(results);
     });
 });
 
-// Resolve report
+// Resolve a report (Standard action)
 app.post('/reports/:id/resolve', (req, res) => {
-    const reportId = req.params.id;
-
-    db.query(
-        "UPDATE reports SET status = 'Resolved' WHERE id = ?",
-        [reportId],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Report resolved");
-        }
-    );
+    const sql = "UPDATE reports SET status = 'Resolved' WHERE id = ?";
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.sendStatus(200);
+    });
 });
 
 // Dismiss report
@@ -371,8 +368,7 @@ app.post('/reports/:id/dismiss', (req, res) => {
 
 /* ================= PLATFORM ACTIVITY ================= */
 app.get('/admin/activity', (req, res) => {
-    // We use LEFT JOIN to ensure the post is always returned
-    // and explicitly select the name as 'username'
+    // We join the users table to get the 'name' field
     const sql = `
         SELECT 
             posts.id, 
@@ -385,27 +381,35 @@ app.get('/admin/activity', (req, res) => {
         LIMIT 50
     `;
     db.query(sql, (err, results) => {
-        if (err) {
-            console.error("Activity Fetch Error:", err);
-            return res.status(500).send(err);
-        }
+        if (err) return res.status(500).send(err);
         res.json(results);
     });
 });
 
 /* ================= SITE STATISTICS ================= */
 app.get('/admin/stats', (req, res) => {
-    const stats = {};
+    const stats = {
+        users: 0,
+        challenges: 0,
+        workouts: 0
+    };
 
-    db.query("SELECT COUNT(*) AS users FROM users", (err, r1) => {
-        stats.users = r1[0].users;
+    // Total Users
+    db.query("SELECT COUNT(*) AS count FROM users", (err, res1) => {
+        if (err) return res.status(500).send(err);
+        stats.users = res1[0].count;
 
-        db.query("SELECT COUNT(*) AS challenges FROM challenges", (err, r2) => {
-            stats.challenges = r2[0].challenges;
+        // Active Challenges
+        db.query("SELECT COUNT(*) AS count FROM challenges", (err, res2) => {
+            if (err) return res.status(500).send(err);
+            stats.challenges = res2[0].count;
 
-            db.query("SELECT COUNT(*) AS workouts FROM workouts", (err, r3) => {
-                stats.workouts = r3[0].workouts;
+            // Query Workouts Logged
+            db.query("SELECT COUNT(*) AS count FROM workouts", (err, res3) => {
+                if (err) return res.status(500).send(err);
+                stats.workouts = res3[0].count;
 
+                // Send the final object back to the frontend
                 res.json(stats);
             });
         });
@@ -413,22 +417,38 @@ app.get('/admin/stats', (req, res) => {
 });
 
 /* ================= SYSTEM SETTINGS ================= */
+// Get current settings
+app.get('/admin/settings', (req, res) => {
+    db.query("SELECT setting_value FROM system_settings WHERE setting_key = 'site_name'", (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json({ site_name: results[0]?.setting_value || "Workout Buddy" });
+    });
+});
+
+// Update settings
 app.post('/admin/settings', (req, res) => {
     const { site_name } = req.body;
-
-    db.query(
-        "UPDATE settings SET value = ? WHERE name = 'site_name'",
-        [site_name],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Settings updated");
-        }
-    );
+    const sql = "INSERT INTO system_settings (setting_key, setting_value) VALUES ('site_name', ?) ON DUPLICATE KEY UPDATE setting_value = ?";
+    db.query(sql, [site_name, site_name], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.sendStatus(200);
+    });
 });
 
 /* ================= REFUNDS ================= */
 app.get('/admin/refunds', (req, res) => {
-    db.query("SELECT * FROM purchases WHERE status = 'Requested'", (err, results) => {
+    // JOIN with the users table to get the name for the frontend cards
+    const sql = `
+        SELECT 
+            purchases.id, 
+            purchases.amount, 
+            purchases.user_id, 
+            users.name AS username 
+        FROM purchases 
+        JOIN users ON purchases.user_id = users.id 
+        WHERE purchases.status = 'Requested'
+    `;
+    db.query(sql, (err, results) => {
         if (err) return res.status(500).send(err);
         res.json(results);
     });
