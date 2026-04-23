@@ -1,17 +1,107 @@
-<h2>Site Statistics</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Statistics - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .stat-card {
+            background-color: #f0ede8;
+            border-radius: 15px;
+            border-bottom: 5px solid #e6bf4d; /* Gold accent on bottom */
+            padding: 2.5rem 1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .stat-label {
+            color: #709770;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+        /* Individual colors for distinction */
+        .color-gold { color: #e6bf4d; }
+        .color-brown { color: #5c4a3d; }
+        .color-green { color: #709770; }
+    </style>
+</head>
+<body>
 
-<ul>
-    <li id="users"></li>
-    <li id="challenges"></li>
-    <li id="workouts"></li>
-</ul>
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+        <a class="navbar-brand brand-title" href="admindashboard.html">Workout Buddy</a>
+        <div class="ms-auto">
+            <a class="nav-link d-inline me-3" href="usermanagement.html">Users</a>
+            <a class="nav-link d-inline me-3" href="report-management.html">Reports</a>
+            <a class="nav-link d-inline me-3" href="platform-activity.html">Activity</a>
+            <a class="nav-link d-inline me-3 active" href="site-statistics.html">Statistics</a>
+            <a class="nav-link d-inline me-3" href="system-settings.html">Settings</a>
+            <a class="nav-link d-inline" href="landing.html">Logout</a>
+        </div>
+    </nav>
 
-<script>
-fetch('/admin/stats')
-.then(res => res.json())
-.then(data => {
-    document.getElementById('users').textContent = "Users: " + data.users;
-    document.getElementById('challenges').textContent = "Challenges: " + data.challenges;
-    document.getElementById('workouts').textContent = "Workouts: " + data.workouts;
-});
-</script>
+    <div class="container py-5">
+        <div class="mb-5">
+            <h2 class="brand-title">Platform Overview</h2>
+            <div class="gold-divider"></div>
+            <p class="gold-accent">Real-time data insights and community growth metrics</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="stat-card text-center">
+                    <div id="users" class="stat-number color-gold">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="stat-card text-center" style="border-bottom-color: #5c4a3d;">
+                    <div id="challenges" class="stat-number color-brown">0</div>
+                    <div class="stat-label">Active Challenges</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="stat-card text-center" style="border-bottom-color: #709770;">
+                    <div id="workouts" class="stat-number color-green">0</div>
+                    <div class="stat-label">Workouts Logged</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchStats() {
+            try {
+                const response = await fetch('/admin/stats');
+                if (!response.ok) throw new Error("Fetch failed");
+                
+                const data = await response.json();
+
+                // Using || 0 to ensure we don't display "undefined" if a table is empty
+                document.getElementById('users').textContent = data.users || 0;
+                document.getElementById('challenges').textContent = data.challenges || 0;
+                document.getElementById('workouts').textContent = data.workouts || 0;
+            } catch (err) {
+                console.error("Stats Error:", err);
+                // Visual feedback for error
+                document.querySelectorAll('.stat-number').forEach(el => el.textContent = "!!");
+            }
+        }
+
+        fetchStats();
+    </script>
+</body>
+</html>
