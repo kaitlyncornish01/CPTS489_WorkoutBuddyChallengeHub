@@ -1,137 +1,231 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>User Management - Workout Buddy</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-<nav class="navbar navbar-expand-lg navbar-custom px-4">
-    <a class="navbar-brand brand-title" href="admindashboard.html">Workout Buddy</a>
-    <div class="ms-auto">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+      <a class="navbar-brand brand-title" href="admindashboard.html"
+        >Workout Buddy</a
+      >
+      <div class="ms-auto">
         <a class="nav-link d-inline me-3" href="usermanagement.html">Users</a>
-        <a class="nav-link d-inline me-3" href="reportmanagement.html">Reports</a>
-        <a class="nav-link d-inline me-3" href="platform-activity.html">Activity</a>
-        <a class="nav-link d-inline me-3" href="site-statistics.html">Statistics</a>
-        <a class="nav-link d-inline me-3" href="system-settings.html">Settings</a>
+        <a class="nav-link d-inline me-3" href="reportmanagement.html"
+          >Reports</a
+        >
+        <a class="nav-link d-inline me-3" href="platform-activity.html"
+          >Activity</a
+        >
+        <a class="nav-link d-inline me-3" href="site-statistics.html"
+          >Statistics</a
+        >
+        <a class="nav-link d-inline me-3" href="system-settings.html"
+          >Settings</a
+        >
         <a class="nav-link d-inline" href="landing.html">Logout</a>
-    </div>
-</nav>
-<div class="container py-5">
-    <h2 class="brand-title mb-2">User Management</h2>
-    <div class="gold-divider mb-3"></div>
-    <p class="gold-accent mb-4">View, search, and manage all registered users</p>
+      </div>
+    </nav>
+    <div class="container py-5">
+      <h2 class="brand-title mb-2">User Management</h2>
+      <div class="gold-divider mb-3"></div>
+      <p class="gold-accent mb-4">
+        View, search, and manage all registered users
+      </p>
 
-    <!-- Search & Filters -->
-    <div class="row mb-4 g-3">
+      <!-- Search & Filters -->
+      <div class="row mb-4 g-3">
         <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Search by name or email...">
+          <input
+            type="text"
+            id="searchInput"
+            class="form-control"
+            placeholder="Search by name or email..."
+          />
         </div>
         <div class="col-md-3">
-            <select class="form-select">
-                <option>All Roles</option>
-                <option>Regular User</option>
-                <option>Trainer</option>
-                <option>Admin</option>
-            </select>
+          <select class="form-select" id="roleFilter">
+            <option value="">All Roles</option>
+            <option value="user">Regular User</option>
+            <option value="trainer">Trainer</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
         <div class="col-md-3">
-            <select class="form-select">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Banned</option>
-            </select>
+          <select class="form-select" id="statusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="banned">Banned</option>
+          </select>
         </div>
         <div class="col-md-2">
-            <button class="btn btn-primary-custom w-100">Search</button>
+          <button class="btn btn-primary-custom w-100" onclick="filterUsers()">
+            Search
+          </button>
         </div>
-    </div>
+      </div>
 
-    <!-- User Table -->
-    <div class="card-custom">
-        <h5 class="brand-title mb-4">All Users <span class="text-muted" style="font-size:0.9rem;">(1,284 total)</span></h5>
-
-        <!-- User 1 - Active -->
-        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
-                    <div>
-                        <strong>Sarah M.</strong>
-                        <p class="text-muted mb-0" style="font-size:0.875rem;">sarah.m@email.com &bull; Regular User &bull; Joined Jan 2025</p>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge" style="background-color:#709770;">Active</span>
-                    <button class="btn btn-outline-secondary btn-sm">View Details</button>
-                    <button class="btn btn-outline-danger btn-sm">Ban</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- User 2 - Trainer -->
-        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
-                    <div>
-                        <strong>Coach Sam</strong>
-                        <p class="text-muted mb-0" style="font-size:0.875rem;">coach.sam@email.com &bull; Trainer &bull; Joined Feb 2024</p>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge" style="background-color:#709770;">Active</span>
-                    <button class="btn btn-outline-secondary btn-sm">View Details</button>
-                    <button class="btn btn-outline-danger btn-sm">Ban</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- User 3 - Banned -->
-        <div class="mb-3 p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
-                    <div>
-                        <strong>Jordan T.</strong>
-                        <p class="text-muted mb-0" style="font-size:0.875rem;">jordan.t@email.com &bull; Regular User &bull; Joined Mar 2025</p>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-danger">Banned</span>
-                    <button class="btn btn-outline-secondary btn-sm">View Details</button>
-                    <button class="btn btn-outline-secondary btn-sm">Unban</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- User 4 - Active -->
-        <div class="p-3" style="background-color:#f0ede8;border-radius:10px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
-                    <div>
-                        <strong>Casey L.</strong>
-                        <p class="text-muted mb-0" style="font-size:0.875rem;">casey.l@email.com &bull; Regular User &bull; Joined Apr 2025</p>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge" style="background-color:#709770;">Active</span>
-                    <button class="btn btn-outline-secondary btn-sm">View Details</button>
-                    <button class="btn btn-outline-danger btn-sm">Ban</button>
-                </div>
-            </div>
-        </div>
+      <!-- User Table -->
+      <div class="card-custom">
+        <h5 class="brand-title mb-4">
+          All Users
+          <span class="text-muted" style="font-size: 0.9rem"
+            >(<span id="userCount">0</span> total)</span
+          >
+        </h5>
+        <div id="userList"></div>
 
         <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center mt-4">
-            <span class="text-muted" style="font-size:0.875rem;">Showing 1–4 of 1,284 users</span>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary btn-sm">Previous</button>
-                <button class="btn btn-primary-custom btn-sm">Next</button>
-            </div>
+          <span class="text-muted" style="font-size: 0.875rem"
+            >Showing <span id="showingText">0</span> users</span
+          >
         </div>
+      </div>
     </div>
-</div>
-</body>
+
+    <script>
+      let allUsers = [];
+      let filteredUsers = [];
+
+      async function loadUsers() {
+        try {
+          const res = await fetch("/admin/users");
+          if (!res.ok) throw new Error(`Failed to load users (${res.status})`);
+          allUsers = await res.json();
+          filteredUsers = allUsers;
+          renderUsers();
+        } catch (err) {
+          console.error(err);
+          document.getElementById("userList").innerHTML =
+            '<p class="text-danger">Failed to load users. Refresh the page or check console.</p>';
+        }
+      }
+
+      function renderUsers() {
+        const container = document.getElementById("userList");
+        container.innerHTML = "";
+        document.getElementById("userCount").textContent = filteredUsers.length;
+        document.getElementById("showingText").textContent =
+          filteredUsers.length;
+
+        if (filteredUsers.length === 0) {
+          container.innerHTML = '<p class="text-muted">No users found.</p>';
+          return;
+        }
+
+        filteredUsers.forEach((user) => {
+          const statusBadge =
+            user.status === "banned"
+              ? '<span class="badge bg-danger">Banned</span>'
+              : '<span class="badge" style="background-color:#709770;">Active</span>';
+
+          const roleBadge = user.role
+            ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+            : "User";
+          const banBtn =
+            user.status === "banned"
+              ? `<button class="btn btn-outline-secondary btn-sm" onclick="unbanUser(${user.id})">Unban</button>`
+              : `<button class="btn btn-outline-danger btn-sm" onclick="banUser(${user.id})">Ban</button>`;
+
+          const card = document.createElement("div");
+          card.className = "mb-3 p-3";
+          card.style.backgroundColor = "#f0ede8";
+          card.style.borderRadius = "10px";
+          card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
+                        <div>
+                            <strong>${user.name}</strong>
+                            <p class="text-muted mb-0" style="font-size:0.875rem;">${user.email} &bull; ${roleBadge}</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        ${statusBadge}
+                        <button class="btn btn-outline-secondary btn-sm" onclick="viewUserDetails(${user.id})">View Details</button>
+                        ${banBtn}
+                    </div>
+                </div>
+            `;
+          container.appendChild(card);
+        });
+      }
+
+      function filterUsers() {
+        const search = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        const role = document.getElementById("roleFilter").value;
+        const status = document.getElementById("statusFilter").value;
+
+        filteredUsers = allUsers.filter((user) => {
+          const matchSearch =
+            !search ||
+            user.name.toLowerCase().includes(search) ||
+            user.email.toLowerCase().includes(search);
+          const matchRole = !role || user.role === role;
+          const matchStatus =
+            !status ||
+            (status === "banned"
+              ? user.status === "banned"
+              : user.status !== "banned");
+          return matchSearch && matchRole && matchStatus;
+        });
+
+        renderUsers();
+      }
+
+      async function banUser(userId) {
+        if (!confirm("Ban this user?")) return;
+        try {
+          const res = await fetch(`/admin/users/${userId}/ban`, {
+            method: "POST",
+          });
+          if (!res.ok) throw new Error("Ban failed");
+          await loadUsers();
+        } catch (err) {
+          console.error(err);
+          alert("Could not ban user.");
+        }
+      }
+
+      async function unbanUser(userId) {
+        if (!confirm("Unban this user?")) return;
+        try {
+          const res = await fetch(`/admin/users/${userId}/unban`, {
+            method: "POST",
+          });
+          if (!res.ok) throw new Error("Unban failed");
+          await loadUsers();
+        } catch (err) {
+          console.error(err);
+          alert("Could not unban user.");
+        }
+      }
+
+      function viewUserDetails(userId) {
+        const user = allUsers.find((u) => u.id === userId);
+        if (user) {
+          alert(
+            `User: ${user.name}\nEmail: ${user.email}\nRole: ${user.role}\nStatus: ${user.status}`,
+          );
+        }
+      }
+
+      // Allow filtering on Enter key
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("searchInput")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") filterUsers();
+          });
+        loadUsers();
+      });
+    </script>
+  </body>
 </html>
