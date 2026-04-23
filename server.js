@@ -33,37 +33,39 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", (req, res) => {
     const { email, password, role } = req.body;
-    const formattedEmail = email.toLowerCase().trim();
 
-    // Always look in the "users" table
-    const sql = `SELECT * FROM users WHERE email = ?`;
+    let tableName = "users";
+    let redirectPath = "dashboard.html";
 
-    db.query(sql, [formattedEmail], async (err, results) => {
+    // Explicitly handle each role
+    if (role === "admin") {
+        tableName = "admins";
+        redirectPath = "admindashboard.html";
+    } else if (role === "trainer") {
+        tableName = "trainers";
+        redirectPath = "trainer-dashboard.html";
+    } else {
+        // This covers role === "user" or if role is missing
+        tableName = "users";
+        redirectPath = "dashboard.html";
+    }
+
+    const sql = `SELECT * FROM ${tableName} WHERE email = ?`;
+
+    db.query(sql, [email], async (err, results) => {
         if (err || results.length === 0) {
-            return res.status(400).json({ message: "Invalid login" });
+            // Provide a clearer error message for the specific role attempted
+            return res.status(400).json({ message: `Invalid ${role || 'user'} login` });
         }
 
-        const user = results[0];
-
-        // Check if the password matches
-        const match = await bcrypt.compare(password, user.password);
+        const match = await bcrypt.compare(password, results[0].password);
         if (!match) {
             return res.status(400).json({ message: "Invalid password" });
         }
 
-        // Check if the user's role in the DB matches the login portal they used
-        if (user.role !== role) {
-            return res.status(403).json({ message: `This account is not authorized as a ${role}` });
-        }
-
-        // Set Session
-        req.session.userId = user.id;
-        req.session.role = user.role;
-
-        // Determine redirect based on the role stored in DB
-        let redirectPath = "dashboard.html";
-        if (user.role === "admin") redirectPath = "admindashboard.html";
-        if (user.role === "trainer") redirectPath = "trainer-dashboard.html";
+        // Save session data
+        req.session.userId = results[0].id;
+        req.session.role = role || "user"; // Default to "user" if role wasn't sent
 
         res.json({ message: "Login success", redirect: redirectPath });
     });
