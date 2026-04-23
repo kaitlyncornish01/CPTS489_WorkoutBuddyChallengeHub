@@ -37,19 +37,25 @@ app.post("/login", (req, res) => {
     let tableName = "users";
     let redirectPath = "dashboard.html";
 
+    // Explicitly handle each role
     if (role === "admin") {
         tableName = "admins";
         redirectPath = "admindashboard.html";
     } else if (role === "trainer") {
         tableName = "trainers";
         redirectPath = "trainer-dashboard.html";
+    } else {
+        // This covers role === "user" or if role is missing
+        tableName = "users";
+        redirectPath = "dashboard.html";
     }
 
     const sql = `SELECT * FROM ${tableName} WHERE email = ?`;
 
     db.query(sql, [email], async (err, results) => {
         if (err || results.length === 0) {
-            return res.status(400).json({ message: "Invalid " + role + " login" });
+            // Provide a clearer error message for the specific role attempted
+            return res.status(400).json({ message: `Invalid ${role || 'user'} login` });
         }
 
         const match = await bcrypt.compare(password, results[0].password);
@@ -57,9 +63,9 @@ app.post("/login", (req, res) => {
             return res.status(400).json({ message: "Invalid password" });
         }
 
-        // ⭐ Save logged-in user ID in session ⭐
+        // Save session data
         req.session.userId = results[0].id;
-        req.session.role = role;
+        req.session.role = role || "user"; // Default to "user" if role wasn't sent
 
         res.json({ message: "Login success", redirect: redirectPath });
     });
