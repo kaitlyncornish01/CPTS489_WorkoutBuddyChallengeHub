@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile - Workout Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .btn-sage-outline {
+            color: #709770;
+            border: 2px solid #709770;
+            background-color: transparent;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-sage-outline:hover {
+            background-color: #709770;
+            color: white;
+            box-shadow: 0 4px 12px rgba(112, 151, 112, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom px-4">
+    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+    <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+        <a class="nav-link d-inline me-3" href="friends-list.html">Friends</a>
+        <a class="nav-link d-inline me-3" href="profile-view.html">My Profile</a>
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="card-custom">
+        <div class="text-center mb-5">
+            <h2 class="brand-title display-5 mb-1" id="user-name">Loading...</h2>
+            <div class="gold-divider mx-auto" style="width: 100px; height: 3px; margin: 15px 0;"></div>
+            <p class="gold-accent fw-bold text-uppercase mb-3" style="letter-spacing: 2px;">Fitness Enthusiast</p>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <p class="text-muted fs-5 mb-3" id="user-bio">Loading bio...</p>
+                    <div id="user-status" class="small text-uppercase fw-bold text-muted" style="letter-spacing: 1px;"></div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap" id="friend-actions"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = value || '';
+        return element.innerHTML;
+    }
+
+    async function requestJson(url, options = {}) {
+        const response = await fetch(url, {
+            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+            ...options
+        });
+
+        if (response.status === 401) {
+            throw new Error('Not logged in');
+        }
+
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : null;
+
+        if (!response.ok) {
+            throw new Error(data?.message || data?.error || 'Request failed');
+        }
+
+        return data;
+    }
+
+    function actionButton(label, onclick, className = 'btn btn-sage-outline px-4 py-2') {
+        return `<button class="${className}" onclick="${onclick}">${label}</button>`;
+    }
+
+    async function loadProfile() {
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('userId');
+
+        if (!userId) {
+            document.body.innerHTML = '<div class="container mt-5"><p class="text-danger">Invalid user ID</p></div>';
+            return;
+        }
+
+        try {
+            let viewer = null;
+            try {
+                viewer = await requestJson('/profile');
+            } catch (error) {
+                if (!String(error.message).includes('Not logged in')) {
+                    throw error;
+                }
+            }
+
+            const user = await requestJson(`/user/${userId}`);
+            const currentUserId = viewer?.id || null;
+
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-bio').textContent = user.bio || 'No bio provided';
+
+            const status = document.getElementById('user-status');
+            const actions = document.getElementById('friend-actions');
+            actions.innerHTML = '';
+
+            if (currentUserId && currentUserId === user.id) {
+                status.textContent = 'This is your profile';
+                actions.innerHTML = `
+                    <a href="profile-view.html" class="btn btn-sage-outline px-4 py-2">View My Profile</a>
+                    <a href="friends-list.html" class="btn btn-outline-secondary px-4 py-2">Manage Friends</a>
+                `;
+                return;
+            }
+
+            if (!viewer) {
+                status.textContent = 'Log in to manage friends or mute users';
+                actions.innerHTML = `<a href="login.html" class="btn btn-sage-outline px-4 py-2">Log In</a>`;
+                return;
+            }
+
+            if (user.muted_by_target) {
+                status.textContent = 'This user has muted you';
+            } else if (user.is_friend) {
+                status.textContent = 'You are friends';
+            } else if (user.pending_request) {
+                status.textContent = user.request_from_me ? 'Friend request sent' : 'Friend request received';
+            } else {
+                status.textContent = 'Not connected';
+            }
+
+            if (user.is_friend) {
+                actions.innerHTML = [
+                    actionButton('Remove Friend', `removeFriend(${user.id})`, 'btn btn-outline-danger px-4 py-2'),
+                    actionButton(user.is_muted ? 'Unmute User' : 'Mute User', `toggleMute(${user.id}, ${user.is_muted ? 1 : 0})`, 'btn btn-outline-secondary px-4 py-2')
+                ].join('');
+                return;
+            }
+
+            if (user.pending_request) {
+                if (user.request_from_me) {
+                    actions.innerHTML = [
+                        actionButton('Cancel Request', `cancelRequest(${user.request_id})`),
+                        actionButton(user.is_muted ? 'Unmute User' : 'Mute User', `toggleMute(${user.id}, ${user.is_muted ? 1 : 0})`, 'btn btn-outline-secondary px-4 py-2')
+                    ].join('');
+                } else {
+                    actions.innerHTML = [
+                        actionButton('Accept Friend', `acceptRequest(${user.request_id})`, 'btn btn-success px-4 py-2'),
+                        actionButton('Deny Request', `denyRequest(${user.request_id})`, 'btn btn-outline-danger px-4 py-2'),
+                        actionButton(user.is_muted ? 'Unmute User' : 'Mute User', `toggleMute(${user.id}, ${user.is_muted ? 1 : 0})`, 'btn btn-outline-secondary px-4 py-2')
+                    ].join('');
+                }
+                return;
+            }
+
+            if (!user.muted_by_target) {
+                actions.innerHTML = [
+                    actionButton('Add Friend', `addFriend(${user.id})`),
+                    actionButton(user.is_muted ? 'Unmute User' : 'Mute User', `toggleMute(${user.id}, ${user.is_muted ? 1 : 0})`, 'btn btn-outline-secondary px-4 py-2')
+                ].join('');
+            } else {
+                actions.innerHTML = actionButton(user.is_muted ? 'Unmute User' : 'Mute User', `toggleMute(${user.id}, ${user.is_muted ? 1 : 0})`, 'btn btn-outline-secondary px-4 py-2');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            document.body.innerHTML = '<div class="container mt-5"><p class="text-danger">Error loading profile</p></div>';
+        }
+    }
+
+    async function addFriend(userId) {
+        try {
+            const data = await requestJson('/send-friend-request', {
+                method: 'POST',
+                body: JSON.stringify({ to_user_id: userId })
+            });
+            alert(data.message || 'Friend request sent!');
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error sending request');
+        }
+    }
+
+    async function acceptRequest(requestId) {
+        try {
+            const data = await requestJson(`/accept-friend-request/${requestId}`, { method: 'POST' });
+            alert(data.message || 'Friend request accepted!');
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error accepting request');
+        }
+    }
+
+    async function denyRequest(requestId) {
+        if (!confirm('Deny this friend request?')) return;
+        try {
+            const data = await requestJson(`/deny-friend-request/${requestId}`, { method: 'POST' });
+            alert(data.message || 'Request denied');
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error denying request');
+        }
+    }
+
+    async function cancelRequest(requestId) {
+        if (!confirm('Cancel this friend request?')) return;
+        try {
+            const data = await requestJson(`/cancel-friend-request/${requestId}`, { method: 'POST' });
+            alert(data.message || 'Request cancelled');
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error cancelling request');
+        }
+    }
+
+    async function removeFriend(userId) {
+        if (!confirm('Remove this friend?')) return;
+        try {
+            const data = await requestJson(`/remove-friend/${userId}`, { method: 'POST' });
+            alert(data.message || 'Friend removed');
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error removing friend');
+        }
+    }
+
+    async function toggleMute(userId, isMuted) {
+        const url = isMuted ? `/unmute-user/${userId}` : `/mute-user/${userId}`;
+        try {
+            const data = await requestJson(url, { method: 'POST' });
+            alert(data.message || (isMuted ? 'User unmuted' : 'User muted'));
+            loadProfile();
+        } catch (err) {
+            alert(err.message || 'Error updating mute status');
+        }
+    }
+
+    loadProfile();
+</script>
+
+</body>
+</html>

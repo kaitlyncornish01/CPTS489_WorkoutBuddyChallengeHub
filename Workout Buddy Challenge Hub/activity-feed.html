@@ -24,6 +24,16 @@
     </div>
 
     <script>
+        function escapeHtml(value) {
+            const element = document.createElement('div');
+            element.textContent = value || '';
+            return element.innerHTML;
+        }
+
+        function userProfileLink(userId, label) {
+            return `<a href="user-profile.html?userId=${userId}" class="brand-title text-decoration-none">${escapeHtml(label)}</a>`;
+        }
+
         async function loadPosts() {
             const res = await fetch("/posts");
             const posts = await res.json();
@@ -39,7 +49,7 @@
                 div.classList.add("card-custom", "mb-4");
                 div.innerHTML = `
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h4 class="brand-title mb-0">${post.name}</h4>
+                        <h4 class="brand-title mb-0">${userProfileLink(post.user_id, post.name)}</h4>
                         <span class="badge rounded-pill bg-light text-dark border">${post.like_count || 0} Likes</span>
                     </div>
                     <p class="fs-5 mb-4">${post.content}</p>
@@ -57,7 +67,7 @@
                             ${post.comments.map(c => `
                                 <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-white">
                                     <div class="small">
-                                        <strong class="brand-title">${c.name}:</strong> 
+                                        <strong class="brand-title">${userProfileLink(c.user_id, c.name)}:</strong> 
                                         <span class="text-muted">${c.comment}</span>
                                     </div>
                                     <button class="btn btn-sm p-0 px-1 text-danger border-0" 

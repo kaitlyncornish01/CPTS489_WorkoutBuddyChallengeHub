@@ -38,34 +38,38 @@
             <h2 class="brand-title display-5 mb-1" id="display-name">Loading...</h2>
             <div class="gold-divider mx-auto" style="width: 100px; height: 3px; margin: 15px 0;"></div>
             <p class="gold-accent fw-bold text-uppercase mb-3" style="letter-spacing: 2px;">Fitness Enthusiast</p>
-            
+
             <div class="row justify-content-center">
                 <div class="col-md-8">
                     <p class="text-muted fs-5" id="display-bio">Loading bio...</p>
                 </div>
             </div>
 
-            <div class="mt-4">
-                <a href="profile-edit.html" class="btn btn-sage-outline px-5 py-2">
-                    Edit Profile
-                </a>
+            <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+                <a href="profile-edit.html" class="btn btn-sage-outline px-4 py-2">Edit Profile</a>
+                <a href="friends-list.html" class="btn btn-sage-outline px-4 py-2">Manage Friends</a>
             </div>
         </div>
 
         <hr class="opacity-10 mb-5">
 
-        <div class="row text-center">
-            <div class="col-md-4 mb-4 mb-md-0">
+        <div class="row text-center g-4">
+            <div class="col-md-3">
                 <div class="h1 fw-bold brand-title mb-0" id="stat-workouts">0</div>
                 <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Total Workouts</div>
             </div>
 
-            <div class="col-md-4 mb-4 mb-md-0 border-start border-end border-light">
+            <div class="col-md-3">
                 <div class="h1 fw-bold brand-title mb-0" id="stat-challenges">0</div>
                 <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Active Challenges</div>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="h1 fw-bold brand-title mb-0" id="stat-friends">0</div>
+                <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Friends</div>
+            </div>
+
+            <div class="col-md-3">
                 <div class="h1 fw-bold brand-title mb-0" id="stat-rate">0%</div>
                 <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Completion Rate</div>
             </div>
@@ -74,27 +78,47 @@
 </div>
 
 <script>
-    const currentUserId = 1;
+    async function requestJson(url, options = {}) {
+        const response = await fetch(url, {
+            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+            ...options
+        });
+
+        if (response.status === 401) {
+            window.location.href = 'landing.html';
+            throw new Error('Not logged in');
+        }
+
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : null;
+
+        if (!response.ok) {
+            throw new Error(data?.message || data?.error || 'Request failed');
+        }
+
+        return data;
+    }
 
     async function loadProfile() {
         try {
-            // 1. Fetch Name and Bio
-            const userRes = await fetch(`/profile/`);
-            const user = await userRes.json();
-            document.getElementById("display-name").innerText = user.name;
-            document.getElementById("display-bio").innerText = user.bio || "Staying consistent and motivated on the fitness journey.";
+            const [user, stats, friends] = await Promise.all([
+                requestJson('/profile'),
+                requestJson('/profile-stats'),
+                requestJson('/friends')
+            ]);
 
-            // 2. Fetch Live Database Stats
-            const statsRes = await fetch(`/profile-stats/`);
-            const stats = await statsRes.json();
-
-            // 3. Update Stats UI
-            document.getElementById("stat-workouts").innerText = stats.totalWorkouts;
-            document.getElementById("stat-challenges").innerText = stats.activeChallenges;
-            document.getElementById("stat-rate").innerText = stats.completionRate + "%";
-
+            document.getElementById('display-name').innerText = user.name;
+            document.getElementById('display-bio').innerText = user.bio || 'Staying consistent and motivated on the fitness journey.';
+            document.getElementById('stat-workouts').innerText = stats.totalWorkouts;
+            document.getElementById('stat-challenges').innerText = stats.activeChallenges;
+            document.getElementById('stat-rate').innerText = `${stats.completionRate}%`;
+            document.getElementById('stat-friends').innerText = friends.length;
         } catch (err) {
-            console.error("Error loading profile data:", err);
+            if (String(err.message).includes('Not logged in')) {
+                return;
+            }
+            console.error('Error loading profile data:', err);
+            document.querySelector('.container.py-5').innerHTML = '<div class="alert alert-danger">Unable to load profile information.</div>';
         }
     }
 

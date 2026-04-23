@@ -456,6 +456,348 @@ app.post('/admin/refunds/:id/deny', (req, res) => {
     );
 });
 
+        /* ================= FRIENDS MANAGEMENT ================= */
+
+        /* Get current user's friend list with details */
+        app.get("/friends", (req, res) => {
+            const userId = req.session.userId;
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+            const sql = `
+                SELECT DISTINCT u.id, u.name, u.bio, u.profile_pic,
+                CASE WHEN mu.id IS NULL THEN 0 ELSE 1 END AS is_muted
+                FROM users u
+                LEFT JOIN muted_users mu ON mu.user_id = ? AND mu.muted_user_id = u.id
+                WHERE u.id IN (
+                    SELECT CASE 
+                        WHEN user_id_1 = ? THEN user_id_2
+                        ELSE user_id_1
+                    END
+                    FROM friends
+                    WHERE user_id_1 = ? OR user_id_2 = ?
+                )
+                ORDER BY u.name ASC
+            `;
+    
+            db.query(sql, [userId, userId, userId, userId], (err, friends) => {
+                if (err) {
+                    console.error("DB Error:", err);
+                    return res.status(500).json({ error: "Failed to load friends" });
+                }
+                res.json(friends);
+            });
+        });
+
+        /* Get pending friend requests for current user */
+        app.get("/friend-requests", (req, res) => {
+            const userId = req.session.userId;
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+            const sql = `
+                SELECT fr.id, fr.from_user_id, u.name, u.bio, u.profile_pic, fr.created_at
+                FROM friend_requests fr
+                JOIN users u ON fr.from_user_id = u.id
+                WHERE fr.to_user_id = ? AND fr.status = 'pending' AND DATEDIFF(NOW(), fr.created_at) <= 100
+                ORDER BY fr.created_at DESC
+            `;
+    
+            db.query(sql, [userId], (err, requests) => {
+                if (err) {
+                    console.error("DB Error:", err);
+                    return res.status(500).json({ error: "Failed to load requests" });
+                }
+                res.json(requests);
+            });
+        });
+
+        /* Get outgoing friend requests sent by current user */
+        app.get("/sent-friend-requests", (req, res) => {
+            const userId = req.session.userId;
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+            const sql = `
+                SELECT fr.id, fr.to_user_id, u.name, u.bio, u.profile_pic, fr.created_at
+                FROM friend_requests fr
+                JOIN users u ON fr.to_user_id = u.id
+                WHERE fr.from_user_id = ? AND fr.status = 'pending'
+                AND DATEDIFF(NOW(), fr.created_at) <= 100
+                ORDER BY fr.created_at DESC
+            `;
+    
+            db.query(sql, [userId], (err, requests) => {
+                if (err) {
+                    console.error("DB Error:", err);
+                    return res.status(500).json({ error: "Failed to load sent requests" });
+                }
+                res.json(requests);
+            });
+        });
+
+        /* Send a friend request with full validation */
+        app.post("/send-friend-request", (req, res) => {
+            const fromUserId = req.session.userId;
+            const { to_user_id } = req.body;
+
+            if (!fromUserId) return res.status(401).json({ error: "Not logged in" });
+            if (!to_user_id || isNaN(to_user_id)) return res.status(400).json({ error: "Invalid user ID" });
+            if (fromUserId === parseInt(to_user_id)) return res.status(400).json({ error: "Cannot add yourself" });
+
+            /* Check if muted by target user */
+            const mutedCheckSql = "SELECT id FROM muted_users WHERE user_id = ? AND muted_user_id = ?";
+            db.query(mutedCheckSql, [to_user_id, fromUserId], (err, mutedResults) => {
+                if (err) return res.status(500).json({ error: "Database error" });
+                if (mutedResults.length > 0) {
+                    return res.status(400).json({ error: "muted", message: "You cannot send a friend request to a user who has muted you." });
+                }
+
+                /* Check if already friends */
+                const friendCheckSql = "SELECT id FROM friends WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+                db.query(friendCheckSql, [fromUserId, to_user_id, to_user_id, fromUserId], (err, friendResults) => {
+                    if (err) return res.status(500).json({ error: "Database error" });
+                    if (friendResults.length > 0) {
+                        return res.status(400).json({ error: "already_friends", message: "You are already friends with this user." });
+                    }
+
+                    /* Check friend list capacity */
+                    const friendCountSql = "SELECT COUNT(*) AS friend_count FROM friends WHERE user_id_1 = ? OR user_id_2 = ?";
+                    db.query(friendCountSql, [to_user_id, to_user_id], (err, countResults) => {
+                        if (err) return res.status(500).json({ error: "Database error" });
+                        if (countResults[0].friend_count >= 100) {
+                            return res.status(400).json({ error: "friends_full", message: to_user_id + " has the maximum number of friends, they must remove some in order to receive a request." });
+                        }
+
+                        /* Check for previous denial */
+                        const denialCheckSql = "SELECT id FROM friend_requests WHERE from_user_id = ? AND to_user_id = ? AND status = 'denied'";
+                        db.query(denialCheckSql, [fromUserId, to_user_id], (err, denialResults) => {
+                            if (err) return res.status(500).json({ error: "Database error" });
+                            if (denialResults.length > 0) {
+                                return res.status(400).json({ error: "previous_denial", message: "You cannot re-send a request that has been denied previously." });
+                            }
+
+                            /* Check if request already exists */
+                            const existingCheckSql = "SELECT id FROM friend_requests WHERE from_user_id = ? AND to_user_id = ? AND status = 'pending'";
+                            db.query(existingCheckSql, [fromUserId, to_user_id], (err, existingResults) => {
+                                if (err) return res.status(500).json({ error: "Database error" });
+                                if (existingResults.length > 0) {
+                                    return res.status(400).json({ error: "pending_request", message: "A friend request already exists." });
+                                }
+
+                                /* Insert the friend request */
+                                const insertSql = "INSERT INTO friend_requests (from_user_id, to_user_id, status) VALUES (?, ?, 'pending')";
+                                db.query(insertSql, [fromUserId, to_user_id], (err, result) => {
+                                    if (err) {
+                                        console.error("DB Error:", err);
+                                        return res.status(500).json({ error: "Failed to send request" });
+                                    }
+                                    res.json({ success: true, message: "Friend request sent!" });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        /* Accept a friend request */
+        app.post("/accept-friend-request/:requestId", (req, res) => {
+            const userId = req.session.userId;
+            const requestId = req.params.requestId;
+
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+            if (!requestId || isNaN(requestId)) return res.status(400).json({ error: "Invalid request ID" });
+
+            /* Verify the request belongs to current user and is pending */
+            const verifySql = "SELECT from_user_id, to_user_id FROM friend_requests WHERE id = ? AND to_user_id = ? AND status = 'pending'";
+            db.query(verifySql, [requestId, userId], (err, results) => {
+                if (err) return res.status(500).json({ error: "Database error" });
+                if (results.length === 0) {
+                    return res.status(404).json({ error: "Request not found or unauthorized" });
+                }
+
+                const fromUserId = results[0].from_user_id;
+                const toUserId = results[0].to_user_id;
+
+                /* Create friendship and delete request */
+                const friendSql = "INSERT IGNORE INTO friends (user_id_1, user_id_2) VALUES (?, ?)";
+                db.query(friendSql, [Math.min(fromUserId, toUserId), Math.max(fromUserId, toUserId)], (err) => {
+                    if (err) {
+                        console.error("DB Error:", err);
+                        return res.status(500).json({ error: "Failed to accept request" });
+                    }
+
+                    /* Delete the request */
+                    const deleteSql = "DELETE FROM friend_requests WHERE id = ?";
+                    db.query(deleteSql, [requestId], (err) => {
+                        if (err) return res.status(500).json({ error: "Failed to accept request" });
+                        res.json({ success: true, message: "Friend request accepted!" });
+                    });
+                });
+            });
+        });
+
+        /* Deny a friend request */
+        app.post("/deny-friend-request/:requestId", (req, res) => {
+            const userId = req.session.userId;
+            const requestId = req.params.requestId;
+
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+            if (!requestId || isNaN(requestId)) return res.status(400).json({ error: "Invalid request ID" });
+
+            /* Verify the request belongs to current user */
+            const verifySql = "SELECT from_user_id FROM friend_requests WHERE id = ? AND to_user_id = ? AND status = 'pending'";
+            db.query(verifySql, [requestId, userId], (err, results) => {
+                if (err) return res.status(500).json({ error: "Database error" });
+                if (results.length === 0) {
+                    return res.status(404).json({ error: "Request not found or unauthorized" });
+                }
+
+                /* Update status to denied */
+                const updateSql = "UPDATE friend_requests SET status = 'denied' WHERE id = ?";
+                db.query(updateSql, [requestId], (err) => {
+                    if (err) return res.status(500).json({ error: "Failed to deny request" });
+                    res.json({ success: true, message: "Friend request denied." });
+                });
+            });
+        });
+
+        /* Cancel outgoing friend request */
+        app.post("/cancel-friend-request/:requestId", (req, res) => {
+            const userId = req.session.userId;
+            const requestId = req.params.requestId;
+
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+            if (!requestId || isNaN(requestId)) return res.status(400).json({ error: "Invalid request ID" });
+
+            /* Verify the request was sent by current user */
+            const verifySql = "SELECT id FROM friend_requests WHERE id = ? AND from_user_id = ? AND status = 'pending'";
+            db.query(verifySql, [requestId, userId], (err, results) => {
+                if (err) return res.status(500).json({ error: "Database error" });
+                if (results.length === 0) {
+                    return res.status(404).json({ error: "Request not found or unauthorized" });
+                }
+
+                /* Delete the request */
+                const deleteSql = "DELETE FROM friend_requests WHERE id = ?";
+                db.query(deleteSql, [requestId], (err) => {
+                    if (err) return res.status(500).json({ error: "Failed to cancel request" });
+                    res.json({ success: true, message: "Friend request cancelled." });
+                });
+            });
+        });
+
+        /* Remove a friend */
+        app.post("/remove-friend/:friendId", (req, res) => {
+            const userId = req.session.userId;
+            const friendId = req.params.friendId;
+
+            if (!userId) return res.status(401).json({ error: "Not logged in" });
+            if (!friendId || isNaN(friendId)) return res.status(400).json({ error: "Invalid friend ID" });
+
+            /* Delete friendship in either direction */
+            const deleteSql = "DELETE FROM friends WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+            db.query(deleteSql, [userId, friendId, friendId, userId], (err, result) => {
+                if (err) return res.status(500).json({ error: "Failed to remove friend" });
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: "Friendship not found" });
+                }
+                res.json({ success: true, message: "Friend removed." });
+            });
+        });
+
+        /* Get public user profile with friend status */
+        app.get("/user/:userId", (req, res) => {
+            const currentUserId = req.session.userId;
+            const targetUserId = req.params.userId;
+
+            if (!targetUserId || isNaN(targetUserId)) return res.status(400).json({ error: "Invalid user ID" });
+
+            /* Get user profile */
+            const userSql = "SELECT id, name, bio, profile_pic FROM users WHERE id = ?";
+            db.query(userSql, [targetUserId], (err, results) => {
+                if (err) return res.status(500).json({ error: "Database error" });
+                if (results.length === 0) {
+                    return res.status(404).json({ error: "User not found" });
+                }
+
+                const user = results[0];
+                const response = { ...user };
+
+                /* If logged in, add friend relationship status */
+                if (currentUserId) {
+                    const friendStatusSql = "SELECT id FROM friends WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+                    db.query(friendStatusSql, [currentUserId, targetUserId, targetUserId, currentUserId], (err, friendResults) => {
+                        if (err) return res.status(500).json({ error: "Database error" });
+                        response.is_friend = friendResults.length > 0;
+
+                        const mutedByMeSql = "SELECT id FROM muted_users WHERE user_id = ? AND muted_user_id = ?";
+                        db.query(mutedByMeSql, [currentUserId, targetUserId], (err, mutedResults) => {
+                            if (err) return res.status(500).json({ error: "Database error" });
+                            response.is_muted = mutedResults.length > 0;
+
+                            const mutedByTargetSql = "SELECT id FROM muted_users WHERE user_id = ? AND muted_user_id = ?";
+                            db.query(mutedByTargetSql, [targetUserId, currentUserId], (err, mutedByTargetResults) => {
+                                if (err) return res.status(500).json({ error: "Database error" });
+                                response.muted_by_target = mutedByTargetResults.length > 0;
+
+                                const requestStatusSql = "SELECT id, from_user_id FROM friend_requests WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)) AND status = 'pending' AND DATEDIFF(NOW(), created_at) <= 100";
+                                db.query(requestStatusSql, [currentUserId, targetUserId, targetUserId, currentUserId], (err, requestResults) => {
+                                    if (err) return res.status(500).json({ error: "Database error" });
+                        
+                                    response.pending_request = requestResults.length > 0;
+                                    if (requestResults.length > 0) {
+                                        response.request_id = requestResults[0].id;
+                                        response.request_from_me = requestResults[0].from_user_id === currentUserId;
+                                    }
+
+                                    res.json(response);
+                                });
+                            });
+                        });
+                    });
+                } else {
+                    response.is_friend = false;
+                    response.pending_request = false;
+                    response.is_muted = false;
+                    response.muted_by_target = false;
+                    res.json(response);
+                }
+            });
+        });
+
+        /* Mute a user */
+        app.post("/mute-user/:userId", (req, res) => {
+            const currentUserId = req.session.userId;
+            const userToMute = req.params.userId;
+
+            if (!currentUserId) return res.status(401).json({ error: "Not logged in" });
+            if (!userToMute || isNaN(userToMute)) return res.status(400).json({ error: "Invalid user ID" });
+            if (currentUserId === parseInt(userToMute)) return res.status(400).json({ error: "Cannot mute yourself" });
+
+            const muteSql = "INSERT IGNORE INTO muted_users (user_id, muted_user_id) VALUES (?, ?)";
+            db.query(muteSql, [currentUserId, userToMute], (err) => {
+                if (err) return res.status(500).json({ error: "Failed to mute user" });
+                res.json({ success: true, message: "User muted." });
+            });
+        });
+
+        /* Unmute a user */
+        app.post("/unmute-user/:userId", (req, res) => {
+            const currentUserId = req.session.userId;
+            const userToUnmute = req.params.userId;
+
+            if (!currentUserId) return res.status(401).json({ error: "Not logged in" });
+            if (!userToUnmute || isNaN(userToUnmute)) return res.status(400).json({ error: "Invalid user ID" });
+
+            const unmuteSql = "DELETE FROM muted_users WHERE user_id = ? AND muted_user_id = ?";
+            db.query(unmuteSql, [currentUserId, userToUnmute], (err, result) => {
+                if (err) return res.status(500).json({ error: "Failed to unmute user" });
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: "Mute relationship not found" });
+                }
+                res.json({ success: true, message: "User unmuted." });
+            });
+        });
+
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
 });

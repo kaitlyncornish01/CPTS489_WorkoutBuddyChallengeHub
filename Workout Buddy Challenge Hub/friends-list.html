@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Friends List - Workout Buddy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -7,57 +8,229 @@
 </head>
 
 <body>
-
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-custom px-4">
-    <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
-    <div class="ms-auto">
-        <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
-        <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
-        <a class="nav-link d-inline" href="landing.html">Logout</a>
-    </div>
-</nav>
-
-<div class="container py-5">
-    <h2 class="brand-title mb-2">Friends</h2>
-
-    <!-- Search & Filters -->
-    <div class="row mb-4 g-3">
-        <div class="col-md-6">
-            <input type="text" class="form-control" placeholder="Search...">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+        <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
+        <div class="ms-auto">
+            <a class="nav-link d-inline me-3" href="activity-feed.html">Activity</a>
+            <a class="nav-link d-inline me-3" href="profile-view.html">Profile</a>
+            <a class="nav-link d-inline" href="landing.html">Logout</a>
         </div>
-        <div class="col-md-6">
-            <select class="form-select">
-                <option>Sort By</option>
-                <option>Latest</option>
-                <option>Oldest</option>
-                <option>Most Active</option>
-            </select>
-        </div>
-    </div>
+    </nav>
 
-    <!-- Friend Cards -->
-    <div class="row g-4">
-        <div class="row-md-4">
-            <div class="card-custom">
-                <h5 class="brand-title">Bob</h5>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="brand-title mb-1">Friends</h2>
+                <p class="text-muted mb-0">Manage your friends, requests, and visibility.</p>
+            </div>
+            <a href="dashboard.html" class="btn btn-outline-secondary">Back to Dashboard</a>
+        </div>
+
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#friends-tab" type="button" role="tab">
+                    My Friends <span id="friends-count-badge" class="badge bg-success ms-2">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#incoming-tab" type="button" role="tab">
+                    Requests Received <span id="incoming-count-badge" class="badge bg-warning text-dark ms-2">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#outgoing-tab" type="button" role="tab">
+                    Requests Sent <span id="outgoing-count-badge" class="badge bg-secondary ms-2">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="friends-tab" role="tabpanel">
+                <div id="friends-list" class="row g-3">
+                    <p class="text-muted">Loading friends...</p>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="incoming-tab" role="tabpanel">
+                <div id="incoming-list" class="row g-3">
+                    <p class="text-muted">Loading friend requests...</p>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="outgoing-tab" role="tabpanel">
+                <div id="outgoing-list" class="row g-3">
+                    <p class="text-muted">Loading sent requests...</p>
+                </div>
             </div>
         </div>
-
-        <div class="row-md-4">
-            <div class="card-custom">
-                <h5 class="brand-title">Joe</h5>
-            </div>
-        </div>
-
-        <div class="row-md-2">
-            <div class="card-custom">
-                <h5 class="brand-title">Billy</h5>
-            </div>
-        </div>
     </div>
 
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, {
+                headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+                ...options
+            });
 
+            if (response.status === 401) {
+                window.location.href = 'landing.html';
+                throw new Error('Not logged in');
+            }
+
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : null;
+
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Request failed');
+            }
+
+            return data;
+        }
+
+        function escapeHtml(value) {
+            const element = document.createElement('div');
+            element.textContent = value || '';
+            return element.innerHTML;
+        }
+
+        function profileUrl(userId) {
+            return `user-profile.html?userId=${userId}`;
+        }
+
+        function friendCard(friend) {
+            return `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card-custom h-100">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                            <div>
+                                <h5 class="brand-title mb-1">${escapeHtml(friend.name)}</h5>
+                                <p class="text-muted small mb-0">${friend.bio ? escapeHtml(friend.bio) : 'No bio yet'}</p>
+                            </div>
+                            ${friend.is_muted ? '<span class="badge bg-secondary">Muted</span>' : ''}
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" href="${profileUrl(friend.id)}">View Profile</a>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeFriend(${friend.id})">Remove</button>
+                            <button class="btn btn-sm ${friend.is_muted ? 'btn-outline-success' : 'btn-outline-warning'}" onclick="toggleMute(${friend.id}, ${friend.is_muted ? 1 : 0})">
+                                ${friend.is_muted ? 'Unmute' : 'Mute'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function incomingCard(request) {
+            return `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card-custom h-100" style="border-left: 4px solid #709770;">
+                        <h5 class="brand-title mb-1">${escapeHtml(request.name)}</h5>
+                        <p class="text-muted small mb-2">${request.bio ? escapeHtml(request.bio) : 'No bio yet'}</p>
+                        <p class="text-muted small mb-3">Sent ${new Date(request.created_at).toLocaleDateString()}</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-sm btn-success" onclick="acceptRequest(${request.id})">Accept</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="denyRequest(${request.id})">Deny</button>
+                            <a class="btn btn-sm btn-outline-secondary" href="${profileUrl(request.from_user_id)}">Profile</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function outgoingCard(request) {
+            return `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card-custom h-100" style="border-left: 4px solid #c9a227;">
+                        <h5 class="brand-title mb-1">${escapeHtml(request.name)}</h5>
+                        <p class="text-muted small mb-2">${request.bio ? escapeHtml(request.bio) : 'No bio yet'}</p>
+                        <p class="text-muted small mb-3">Sent ${new Date(request.created_at).toLocaleDateString()}</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" href="${profileUrl(request.to_user_id)}">Profile</a>
+                            <button class="btn btn-sm btn-outline-warning" onclick="cancelRequest(${request.id})">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadFriends() {
+            const friends = await requestJson('/friends');
+            const container = document.getElementById('friends-list');
+            document.getElementById('friends-count-badge').textContent = friends.length;
+            container.innerHTML = friends.length ? friends.map(friendCard).join('') : '<p class="text-muted">You do not have any friends yet.</p>';
+        }
+
+        async function loadIncoming() {
+            const requests = await requestJson('/friend-requests');
+            const container = document.getElementById('incoming-list');
+            document.getElementById('incoming-count-badge').textContent = requests.length;
+            container.innerHTML = requests.length ? requests.map(incomingCard).join('') : '<p class="text-muted">No pending requests.</p>';
+        }
+
+        async function loadOutgoing() {
+            const requests = await requestJson('/sent-friend-requests');
+            const container = document.getElementById('outgoing-list');
+            document.getElementById('outgoing-count-badge').textContent = requests.length;
+            container.innerHTML = requests.length ? requests.map(outgoingCard).join('') : '<p class="text-muted">No outgoing requests.</p>';
+        }
+
+        async function acceptRequest(requestId) {
+            if (!confirm('Accept this friend request?')) return;
+            await requestJson(`/accept-friend-request/${requestId}`, { method: 'POST' });
+            await refreshAll();
+            alert('Friend request accepted.');
+        }
+
+        async function denyRequest(requestId) {
+            if (!confirm('Deny this friend request?')) return;
+            await requestJson(`/deny-friend-request/${requestId}`, { method: 'POST' });
+            await refreshAll();
+            alert('Friend request denied.');
+        }
+
+        async function cancelRequest(requestId) {
+            if (!confirm('Cancel this outgoing request?')) return;
+            await requestJson(`/cancel-friend-request/${requestId}`, { method: 'POST' });
+            await refreshAll();
+            alert('Friend request cancelled.');
+        }
+
+        async function removeFriend(friendId) {
+            if (!confirm('Remove this friend?')) return;
+            await requestJson(`/remove-friend/${friendId}`, { method: 'POST' });
+            await refreshAll();
+            alert('Friend removed.');
+        }
+
+        async function toggleMute(friendId, isMuted) {
+            const route = isMuted ? `/unmute-user/${friendId}` : `/mute-user/${friendId}`;
+            await requestJson(route, { method: 'POST' });
+            await loadFriends();
+            alert(isMuted ? 'User unmuted.' : 'User muted.');
+        }
+
+        async function refreshAll() {
+            await Promise.all([loadFriends(), loadIncoming(), loadOutgoing()]);
+        }
+
+        async function init() {
+            try {
+                await requestJson('/profile');
+                await refreshAll();
+            } catch (err) {
+                if (String(err.message).includes('Not logged in')) {
+                    return;
+                }
+                console.error(err);
+                const container = document.querySelector('.container.py-5');
+                container.innerHTML = '<div class="alert alert-danger">Unable to load friends. Please log in again.</div>';
+            }
+        }
+
+        init();
+    </script>
 </body>
+
 </html>
