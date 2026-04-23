@@ -1,34 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>System Settings - Workout Buddy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .btn-primary-custom {
+            background-color: #709770;
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-primary-custom:hover {
+            background-color: #5c7c5c;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-custom px-4">
         <a class="navbar-brand brand-title" href="admindashboard.html">Workout Buddy</a>
-        </nav>
+        <div class="ms-auto">
+            <a class="nav-link d-inline me-3" href="usermanagement.html">Users</a>
+            <a class="nav-link d-inline me-3" href="report-management.html">Reports</a>
+            <a class="nav-link d-inline me-3" href="platform-activity.html">Activity</a>
+            <a class="nav-link d-inline me-3" href="site-statistics.html">Statistics</a>
+            <a class="nav-link d-inline me-3 active" href="system-settings.html">Settings</a>
+            <a class="nav-link d-inline" href="landing.html">Logout</a>
+        </div>
+    </nav>
 
     <div class="container py-5">
-        <h2 class="brand-title mb-4">System Settings</h2>
+        <div class="mb-5">
+            <h2 class="brand-title">System Settings</h2>
+            <div class="gold-divider"></div>
+            <p class="gold-accent">Configure global platform parameters</p>
+        </div>
+
         <div class="card-custom" style="max-width: 600px;">
-            <div class="mb-3">
-                <label class="form-label brand-title">Site Name</label>
-                <input id="siteName" class="form-control" placeholder="Workout Buddy">
+            <div class="mb-4">
+                <label class="form-label brand-title" style="font-size: 1.1rem;">Site Name</label>
+                <input id="siteName" class="form-control" style="border-radius: 8px; padding: 12px;" placeholder="Enter site name...">
             </div>
-            <button onclick="save()" class="btn btn-primary-custom w-100">Save Changes</button>
+            <button onclick="save()" class="btn btn-primary-custom w-100 py-2">Save Changes</button>
         </div>
     </div>
 
     <script>
-        function save() {
+        // Retroactive Fix: Load the name from the DB on page load
+        window.onload = async () => {
+            try {
+                const res = await fetch('/admin/settings');
+                const data = await res.json();
+                document.getElementById('siteName').value = data.site_name;
+            } catch (err) {
+                console.error("Failed to load settings");
+            }
+        };
+
+        async function save() {
             const siteName = document.getElementById('siteName').value;
-            fetch('/admin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ site_name: siteName })
-            }).then(() => alert("Settings saved successfully!"));
+            if (!siteName) return alert("Site name cannot be empty");
+
+            try {
+                const res = await fetch('/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ site_name: siteName })
+                });
+
+                if (res.ok) {
+                    alert("Settings saved successfully!");
+                    // Optional: Update the navbar brand immediately
+                    document.querySelector('.navbar-brand').innerText = siteName;
+                }
+            } catch (err) {
+                alert("Error saving settings.");
+            }
         }
     </script>
 </body>

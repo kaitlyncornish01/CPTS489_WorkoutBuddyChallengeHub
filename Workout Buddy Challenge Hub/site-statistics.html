@@ -84,19 +84,30 @@
 
     <script>
         async function fetchStats() {
+            // Select the elements
+            const userEl = document.getElementById('users');
+            const challengeEl = document.getElementById('challenges');
+            const workoutEl = document.getElementById('workouts');
+
+            // Show loading state
+            userEl.textContent = "...";
+            challengeEl.textContent = "...";
+            workoutEl.textContent = "...";
+
             try {
                 const response = await fetch('/admin/stats');
                 if (!response.ok) throw new Error("Fetch failed");
                 
                 const data = await response.json();
 
-                // Using || 0 to ensure we don't display "undefined" if a table is empty
-                document.getElementById('users').textContent = data.users || 0;
-                document.getElementById('challenges').textContent = data.challenges || 0;
-                document.getElementById('workouts').textContent = data.workouts || 0;
+                // Populate with actual DB counts from workout_app.sql
+                userEl.textContent = data.users !== undefined ? data.users : 0;
+                challengeEl.textContent = data.challenges !== undefined ? data.challenges : 0;
+                workoutEl.textContent = data.workouts !== undefined ? data.workouts : 0;
+
             } catch (err) {
                 console.error("Stats Error:", err);
-                // Visual feedback for error
+                // If the server is down or route is missing, show error markers
                 document.querySelectorAll('.stat-number').forEach(el => el.textContent = "!!");
             }
         }
