@@ -371,13 +371,26 @@ app.post('/reports/:id/dismiss', (req, res) => {
 
 /* ================= PLATFORM ACTIVITY ================= */
 app.get('/admin/activity', (req, res) => {
-    db.query(
-        "SELECT * FROM posts ORDER BY created_at DESC LIMIT 20",
-        (err, results) => {
-            if (err) return res.status(500).send(err);
-            res.json(results);
+    // We use LEFT JOIN to ensure the post is always returned
+    // and explicitly select the name as 'username'
+    const sql = `
+        SELECT 
+            posts.id, 
+            posts.content, 
+            posts.created_at, 
+            users.name AS username 
+        FROM posts 
+        LEFT JOIN users ON posts.user_id = users.id 
+        ORDER BY posts.created_at DESC 
+        LIMIT 50
+    `;
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("Activity Fetch Error:", err);
+            return res.status(500).send(err);
         }
-    );
+        res.json(results);
+    });
 });
 
 /* ================= SITE STATISTICS ================= */
@@ -428,6 +441,17 @@ app.post('/admin/refunds/:id/approve', (req, res) => {
         (err) => {
             if (err) return res.status(500).send(err);
             res.send("Refund issued");
+        }
+    );
+});
+
+app.post('/admin/refunds/:id/deny', (req, res) => {
+    db.query(
+        "UPDATE purchases SET status = 'Denied' WHERE id = ?",
+        [req.params.id],
+        (err) => {
+            if (err) return res.status(500).send(err);
+            res.send("Refund denied");
         }
     );
 });
