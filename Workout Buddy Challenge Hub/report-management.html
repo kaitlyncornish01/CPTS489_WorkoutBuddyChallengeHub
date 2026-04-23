@@ -90,6 +90,7 @@
             const countBadge = document.getElementById('reportCount');
 
             try {
+                // Standardizing the fetch URL
                 const response = await fetch('/reports');
                 if (!response.ok) throw new Error("Server Error");
 
@@ -118,7 +119,7 @@
                                 
                                 <div class="mb-2">
                                     <span class="report-label">Reported User:</span>
-                                    <span class="report-value">${report.reported_user || 'Unknown'}</span>
+                                    <span class="report-value">${report.reported_user}</span>
                                 </div>
 
                                 <div>
@@ -143,8 +144,13 @@
 
         async function handleAction(id, type) {
             try {
+                // Matches the app.post('/reports/:id/resolve') route
                 const res = await fetch(`/reports/${id}/${type}`, { method: 'POST' });
-                if (res.ok) loadReports();
+                if (res.ok) {
+                    loadReports();
+                } else {
+                    alert("Could not update report status.");
+                }
             } catch (err) {
                 alert("Action failed.");
             }
@@ -153,10 +159,10 @@
         async function banUser(username, reportId) {
             if (confirm(`Are you sure you want to permanently ban ${username}?`)) {
                 try {
-                    // Logic: Resolve the report and trigger ban
+                    // In a real app, you'd also have a POST /admin/ban-user route here
                     const res = await fetch(`/reports/${reportId}/resolve`, { method: 'POST' });
                     if (res.ok) {
-                        alert(`${username} has been banned.`);
+                        alert(`${username} has been flagged for a ban and report #${reportId} is resolved.`);
                         loadReports();
                     }
                 } catch (err) {
