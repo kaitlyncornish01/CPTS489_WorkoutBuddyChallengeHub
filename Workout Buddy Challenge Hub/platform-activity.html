@@ -75,8 +75,8 @@
                 const data = await res.json();
                 list.innerHTML = "";
 
-                if (data.length === 0) {
-                    list.innerHTML = `<div class="card-custom text-center py-5"><p class="text-muted">No activity recorded.</p></div>`;
+                if (!data || data.length === 0) {
+                    list.innerHTML = `<div class="text-center py-5"><p class="text-muted">No activity found in the database.</p></div>`;
                     return;
                 }
 
@@ -88,23 +88,23 @@
                     const item = document.createElement('div');
                     item.className = "activity-card";
                     
-                    // Display the name from the DB, otherwise fallback
+                    // Retroactive Fix: If the username join fails, we show the ID
                     const userDisplay = post.username ? post.username : `User #${post.user_id}`;
 
                     item.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
+                            <div style="flex: 1;">
                                 <span class="activity-user">${userDisplay}</span>
                                 <p class="activity-content">${post.content}</p>
                             </div>
-                            <div class="text-end">
+                            <div class="text-end ms-3">
                                 <span class="activity-time">${date}</span>
                             </div>
                         </div>`;
                     list.appendChild(item);
                 });
             } catch (err) {
-                list.innerHTML = `<p class="text-danger text-center py-5">Unable to load feed. Check server.js</p>`;
+                list.innerHTML = `<div class="text-center py-5"><p class="text-danger">Connection Error: Ensure your server is running and the database is connected.</p></div>`;
             }
         }
 
