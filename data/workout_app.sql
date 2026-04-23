@@ -256,6 +256,62 @@ INSERT INTO `workouts` VALUES (1,1,'HIIT',7,52,'2026-04-15','2026-04-15 19:39:09
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+--
+-- Table structure for table `purchases`
+--
+
+DROP TABLE IF EXISTS `purchases`;
+CREATE TABLE `purchases` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `status` enum('Requested','Refunded','Denied') DEFAULT 'Requested',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+LOCK TABLES `purchases` WRITE;
+INSERT INTO `purchases` (user_id, amount, status) VALUES 
+(1, 29.99, 'Requested'),
+(2, 45.00, 'Requested'),
+(3, 15.50, 'Requested');
+UNLOCK TABLES;
+
+--
+-- Table structure for table `reports`
+--
+
+DROP TABLE IF EXISTS `reports`;
+CREATE TABLE `reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `reported_user` varchar(100) NOT NULL,
+  `reason` text NOT NULL,
+  `status` enum('Pending','Resolved') DEFAULT 'Pending',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+LOCK TABLES `reports` WRITE;
+INSERT INTO `reports` (reported_user, reason) VALUES 
+('Kaitlyn Cornish','Spamming comments'),
+('Hudson Ahmann','Inappropriate bio');
+UNLOCK TABLES;
+
+--
+-- Table structure for table `system_settings`
+--
+
+DROP TABLE IF EXISTS `system_settings`;
+CREATE TABLE `system_settings` (
+  `setting_key` varchar(50) NOT NULL,
+  `setting_value` text,
+  PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+LOCK TABLES `system_settings` WRITE;
+INSERT INTO `system_settings` VALUES ('site_name','Workout Buddy');
+UNLOCK TABLES;
+
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
