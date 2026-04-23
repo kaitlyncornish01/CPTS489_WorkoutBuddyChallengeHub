@@ -40,6 +40,18 @@ function requireAdmin(req, res) {
     return true;
 }
 
+function requireTrainer(req, res) {
+    if (!req.session.userId) {
+        res.status(401).json({ error: "Not logged in" });
+        return false;
+    }
+    if (req.session.role !== "trainer") {
+        res.status(403).json({ error: "Trainer access required" });
+        return false;
+    }
+    return true;
+}
+
 function dbQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -120,28 +132,38 @@ app.post("/register", async (req, res) => {
 app.post("/login", (req, res) => {
     const { email, password, role } = req.body;
 
-    let tableName = "users";
-    let redirectPath = "dashboard.html";
+    const requestedRole = String(role || "user").toLowerCase();
 
-    // Explicitly handle each role
-    if (role === "admin") {
-        tableName = "admins";
-        redirectPath = "admindashboard.html";
-    } else if (role === "trainer") {
-        tableName = "trainers";
-        redirectPath = "trainer-dashboard.html";
-    } else {
-        // This covers role === "user" or if role is missing
-        tableName = "users";
-        redirectPath = "dashboard.html";
+    if (requestedRole === "admin") {
+        db.query("SELECT id, password FROM admins WHERE email = ?", [email], async (err, results) => {
+            if (err || results.length === 0) {
+                return res.status(400).json({ message: "Invalid admin login" });
+            }
+
+            const match = await bcrypt.compare(password, results[0].password);
+            if (!match) {
+                return res.status(400).json({ message: "Invalid password" });
+            }
+
+            req.session.userId = results[0].id;
+            req.session.role = "admin";
+            res.json({ message: "Login success", redirect: "admindashboard.html" });
+        });
+        return;
     }
 
-    const sql = `SELECT * FROM ${tableName} WHERE email = ?`;
+    let userSql = "SELECT id, password, role FROM users WHERE email = ?";
+    const params = [email];
 
-    db.query(sql, [email], async (err, results) => {
+    if (requestedRole === "trainer") {
+        userSql += " AND role = 'trainer'";
+    } else {
+        userSql += " AND role IN ('participant', 'trainer')";
+    }
+
+    db.query(userSql, params, async (err, results) => {
         if (err || results.length === 0) {
-            // Provide a clearer error message for the specific role attempted
-            return res.status(400).json({ message: `Invalid ${role || 'user'} login` });
+            return res.status(400).json({ message: `Invalid ${requestedRole} login` });
         }
 
         const match = await bcrypt.compare(password, results[0].password);
@@ -149,12 +171,105 @@ app.post("/login", (req, res) => {
             return res.status(400).json({ message: "Invalid password" });
         }
 
-        // Save session data
         req.session.userId = results[0].id;
-        req.session.role = role || "user"; // Default to "user" if role wasn't sent
+        req.session.role = results[0].role;
 
+        const redirectPath = results[0].role === "trainer" ? "trainer-dashboard.html" : "dashboard.html";
         res.json({ message: "Login success", redirect: redirectPath });
     });
+});
+
+/* ================= TRAINER CONTENT DASHBOARD ================= */
+app.get("/trainer/dashboard-data", async (req, res) => {
+    if (!requireTrainer(req, res)) return;
+
+    try {
+        const trainers = await dbQuery("SELECT id FROM trainers WHERE user_id = ? LIMIT 1", [req.session.userId]);
+        if (trainers.length === 0) {
+            return res.status(403).json({ error: "Trainer profile not found" });
+        }
+
+        const trainerId = trainers[0].id;
+
+        const [statsRows, draftRows, libraryRows] = await Promise.all([
+            dbQuery(
+                `
+                SELECT
+                    SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) AS draft_count,
+                    SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published_count
+                FROM trainer_content_posts
+                WHERE trainer_id = ?
+                `,
+                [trainerId]
+            ),
+            dbQuery(
+                `
+                SELECT id, title, status, updated_at
+                FROM trainer_content_posts
+                WHERE trainer_id = ? AND status = 'draft'
+                ORDER BY updated_at DESC
+                LIMIT 10
+                `,
+                [trainerId]
+            ),
+            dbQuery(
+                `
+                SELECT id, title, status, updated_at
+                FROM trainer_content_posts
+                WHERE trainer_id = ?
+                ORDER BY updated_at DESC
+                LIMIT 15
+                `,
+                [trainerId]
+            )
+        ]);
+
+        const stats = statsRows[0] || {};
+
+        res.json({
+            stats: {
+                drafts: Number(stats.draft_count || 0),
+                pendingReviews: 0,
+                published: Number(stats.published_count || 0)
+            },
+            drafts: draftRows,
+            library: libraryRows
+        });
+    } catch (err) {
+        console.error("Trainer dashboard load error:", err);
+        res.status(500).json({ error: "Failed to load trainer dashboard" });
+    }
+});
+
+app.post("/trainer/content/drafts", async (req, res) => {
+    if (!requireTrainer(req, res)) return;
+
+    try {
+        const title = typeof req.body.title === "string" && req.body.title.trim()
+            ? req.body.title.trim().slice(0, 150)
+            : "Untitled Draft";
+
+        const trainers = await dbQuery("SELECT id FROM trainers WHERE user_id = ? LIMIT 1", [req.session.userId]);
+        if (trainers.length === 0) {
+            return res.status(403).json({ error: "Trainer profile not found" });
+        }
+
+        const trainerId = trainers[0].id;
+        const result = await dbQuery(
+            "INSERT INTO trainer_content_posts (trainer_id, title, status) VALUES (?, ?, 'draft')",
+            [trainerId, title]
+        );
+
+        res.status(201).json({
+            id: result.insertId,
+            title,
+            status: "draft",
+            message: "Draft created"
+        });
+    } catch (err) {
+        console.error("Create trainer draft error:", err);
+        res.status(500).json({ error: "Failed to create draft" });
+    }
 });
 
 /* ================= POSTS & INTERACTIONS ================= */

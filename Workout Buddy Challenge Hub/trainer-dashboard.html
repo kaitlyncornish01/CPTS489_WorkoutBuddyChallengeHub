@@ -25,68 +25,42 @@
         <div class="col-12 col-md-4">
             <div class="login-card p-3 h-100">
                 <small class="text-muted d-block">Draft Challenges</small>
-                <h4 class="mb-0">3</h4>
+                <h4 class="mb-0" id="draftCount">0</h4>
             </div>
         </div>
         <div class="col-12 col-md-4">
             <div class="login-card p-3 h-100">
                 <small class="text-muted d-block">Pending Reviews</small>
-                <h4 class="mb-0">2</h4>
+                <h4 class="mb-0" id="pendingReviewCount">0</h4>
             </div>
         </div>
         <div class="col-12 col-md-4">
             <div class="login-card p-3 h-100">
                 <small class="text-muted d-block">Published Content</small>
-                <h4 class="mb-0">7</h4>
+                <h4 class="mb-0" id="publishedCount">0</h4>
             </div>
         </div>
     </div>
+
+    <div class="alert alert-danger d-none" id="dashboardError" role="alert"></div>
 
     <div class="row g-4">
         <div class="col-12 col-lg-6">
             <div class="login-card p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0">Challenge Drafts</h5>
-                    <button class="btn btn-sm btn-outline-secondary" type="button">+ New Draft</button>
+                    <button class="btn btn-sm btn-outline-secondary" id="newDraftBtn" type="button">+ New Draft</button>
                 </div>
 
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item px-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>4-Week Strength Builder</strong>
-                                <div class="text-muted small">Updated 2 hours ago</div>
-                            </div>
-                            <span class="badge text-bg-warning">Draft</span>
-                        </div>
-                    </div>
-
-                    <div class="list-group-item px-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>Beginner Cardio Kickstart</strong>
-                                <div class="text-muted small">Updated yesterday</div>
-                            </div>
-                            <span class="badge text-bg-warning">Draft</span>
-                        </div>
-                    </div>
-
-                    <div class="list-group-item px-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>Core Stability Essentials</strong>
-                                <div class="text-muted small">Updated 3 days ago</div>
-                            </div>
-                            <span class="badge text-bg-warning">Draft</span>
-                        </div>
-                    </div>
+                <div class="list-group list-group-flush" id="draftList">
+                    <div class="list-group-item px-0 text-muted">No drafts yet.</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-lg-6">
             <div class="login-card p-4 h-100">
-                <h5 class="mb-3">Content Library (Placeholder)</h5>
+                <h5 class="mb-3">Content Library</h5>
 
                 <div class="table-responsive">
                     <table class="table align-middle">
@@ -97,26 +71,9 @@
                                 <th>Last Edited</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="contentLibraryBody">
                             <tr>
-                                <td>Mobility Warm-Up Guide</td>
-                                <td><span class="badge text-bg-success">Published</span></td>
-                                <td>Today</td>
-                            </tr>
-                            <tr>
-                                <td>Upper Body Technique Tips</td>
-                                <td><span class="badge text-bg-info">Review</span></td>
-                                <td>Yesterday</td>
-                            </tr>
-                            <tr>
-                                <td>Hydration Checklist PDF</td>
-                                <td><span class="badge text-bg-secondary">Archived</span></td>
-                                <td>Feb 28</td>
-                            </tr>
-                            <tr>
-                                <td>Workout Recovery Notes</td>
-                                <td><span class="badge text-bg-success">Published</span></td>
-                                <td>Feb 26</td>
+                                <td colspan="3" class="text-muted">No content yet.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -135,6 +92,124 @@
         </div>
     </div>
 </div>
+
+<script>
+    function formatDateTime(value) {
+        if (!value) return "-";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "-";
+        return date.toLocaleString();
+    }
+
+    function statusBadgeClass(status) {
+        if (status === "published") return "text-bg-success";
+        if (status === "draft") return "text-bg-warning";
+        return "text-bg-secondary";
+    }
+
+    function setDashboardError(message) {
+        const errorBox = document.getElementById("dashboardError");
+        if (!message) {
+            errorBox.classList.add("d-none");
+            errorBox.textContent = "";
+            return;
+        }
+        errorBox.textContent = message;
+        errorBox.classList.remove("d-none");
+    }
+
+    function renderDrafts(drafts) {
+        const draftList = document.getElementById("draftList");
+        if (!Array.isArray(drafts) || drafts.length === 0) {
+            draftList.innerHTML = '<div class="list-group-item px-0 text-muted">No drafts yet.</div>';
+            return;
+        }
+
+        draftList.innerHTML = drafts.map((draft) => `
+            <div class="list-group-item px-0">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <strong>${draft.title}</strong>
+                        <div class="text-muted small">Updated ${formatDateTime(draft.updated_at)}</div>
+                    </div>
+                    <span class="badge ${statusBadgeClass(draft.status)}">${draft.status}</span>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    function renderLibrary(items) {
+        const body = document.getElementById("contentLibraryBody");
+        if (!Array.isArray(items) || items.length === 0) {
+            body.innerHTML = '<tr><td colspan="3" class="text-muted">No content yet.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = items.map((item) => `
+            <tr>
+                <td>${item.title}</td>
+                <td><span class="badge ${statusBadgeClass(item.status)}">${item.status}</span></td>
+                <td>${formatDateTime(item.updated_at)}</td>
+            </tr>
+        `).join("");
+    }
+
+    async function loadTrainerDashboard() {
+        try {
+            setDashboardError("");
+            const response = await fetch("/trainer/dashboard-data");
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "login.html";
+                    return;
+                }
+                throw new Error("Unable to load trainer dashboard data.");
+            }
+
+            const data = await response.json();
+            document.getElementById("draftCount").textContent = data.stats?.drafts ?? 0;
+            document.getElementById("pendingReviewCount").textContent = data.stats?.pendingReviews ?? 0;
+            document.getElementById("publishedCount").textContent = data.stats?.published ?? 0;
+
+            renderDrafts(data.drafts || []);
+            renderLibrary(data.library || []);
+        } catch (error) {
+            setDashboardError(error.message || "Failed to load dashboard.");
+        }
+    }
+
+    async function createDraft() {
+        const button = document.getElementById("newDraftBtn");
+        button.disabled = true;
+        try {
+            setDashboardError("");
+            const response = await fetch("/trainer/content/drafts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ title: "Untitled Draft" })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "login.html";
+                    return;
+                }
+                throw new Error("Unable to create draft.");
+            }
+
+            await loadTrainerDashboard();
+        } catch (error) {
+            setDashboardError(error.message || "Failed to create draft.");
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    document.getElementById("newDraftBtn").addEventListener("click", createDraft);
+    loadTrainerDashboard();
+</script>
 
 </body>
 </html>
