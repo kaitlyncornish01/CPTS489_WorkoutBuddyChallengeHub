@@ -1,0 +1,291 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Bundle Management - Workout Buddy</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+      <a class="navbar-brand brand-title" href="admindashboard.html"
+        >Workout Buddy</a
+      >
+      <div class="ms-auto">
+        <a class="nav-link d-inline me-3" href="usermanagement.html">Users</a>
+        <a class="nav-link d-inline me-3" href="challenge-management.html"
+          >Challenges</a
+        >
+        <a class="nav-link d-inline me-3" href="admin-content-pricing.html"
+          >Content</a
+        >
+        <a class="nav-link d-inline me-3" href="admin-bundle-management.html"
+          >Bundles</a
+        >
+        <a class="nav-link d-inline me-3" href="report-management.html"
+          >Reports</a
+        >
+        <a class="nav-link d-inline" href="landing.html">Logout</a>
+      </div>
+    </nav>
+
+    <div class="container py-5">
+      <div class="mb-4">
+        <h2 class="brand-title mb-2">Bundle Management</h2>
+        <div class="gold-divider mb-3"></div>
+        <p class="gold-accent">Organize and manage content bundles for users</p>
+      </div>
+
+      <div class="row g-4 mb-5">
+        <!-- Create Bundle Form -->
+        <div class="col-lg-5">
+          <div class="card-custom p-4">
+            <h5 class="brand-title mb-3" id="formTitle">Create New Bundle</h5>
+            <form id="bundleForm">
+              <div class="mb-3">
+                <label for="bundleName" class="form-label">Bundle Name</label>
+                <input
+                  type="text"
+                  id="bundleName"
+                  class="form-control"
+                  placeholder="e.g. Complete Fitness Pack"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label for="bundleDesc" class="form-label">Description</label>
+                <textarea
+                  id="bundleDesc"
+                  class="form-control"
+                  rows="3"
+                  placeholder="What does this bundle include?"
+                  required
+                ></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="bundlePrice" class="form-label">Price (USD)</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input
+                    type="number"
+                    id="bundlePrice"
+                    class="form-control"
+                    placeholder="0.00"
+                    min="0.01"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="mb-4">
+                <label for="bundleStatus" class="form-label">Status</label>
+                <select id="bundleStatus" class="form-select">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div class="d-flex gap-2">
+                <button
+                  class="btn btn-primary-custom"
+                  type="submit"
+                  id="saveButton"
+                >
+                  Save Bundle
+                </button>
+                <button
+                  class="btn btn-outline-secondary"
+                  type="button"
+                  id="cancelButton"
+                  style="display: none"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p class="text-muted small mt-3" id="formMessage"></p>
+            </form>
+          </div>
+        </div>
+
+        <!-- Bundles List -->
+        <div class="col-lg-7">
+          <div class="card-custom p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="brand-title mb-0">
+                All Bundles
+                <span class="text-muted" style="font-size: 0.9rem"
+                  >(<span id="bundleCount">0</span>)</span
+                >
+              </h5>
+              <input
+                type="text"
+                id="searchInput"
+                class="form-control"
+                placeholder="Search..."
+                style="max-width: 200px"
+              />
+            </div>
+            <div id="bundleList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let allBundles = [];
+      let filteredBundles = [];
+      let editingBundleId = null;
+
+      async function loadBundles() {
+        try {
+          const res = await fetch("/admin/bundles");
+          if (!res.ok)
+            throw new Error(`Failed to load bundles (${res.status})`);
+          allBundles = await res.json();
+          filteredBundles = allBundles;
+          renderBundles();
+        } catch (err) {
+          console.error(err);
+          document.getElementById("bundleList").innerHTML =
+            '<p class="text-danger">Failed to load bundles. Check console.</p>';
+        }
+      }
+
+      function renderBundles() {
+        const container = document.getElementById("bundleList");
+        container.innerHTML = "";
+        document.getElementById("bundleCount").textContent =
+          filteredBundles.length;
+
+        if (filteredBundles.length === 0) {
+          container.innerHTML =
+            '<p class="text-muted">No bundles created yet.</p>';
+          return;
+        }
+
+        filteredBundles.forEach((bundle) => {
+          const statusBadge =
+            bundle.status === "active"
+              ? '<span class="badge" style="background-color:#709770;">Active</span>'
+              : '<span class="badge bg-secondary">Inactive</span>';
+
+          const card = document.createElement("div");
+          card.className = "mb-3 p-3";
+          card.style.backgroundColor = "#f0ede8";
+          card.style.borderRadius = "10px";
+          card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <h6 class="mb-1">${bundle.name}</h6>
+                        <p class="text-muted mb-1" style="font-size:0.9rem;">${bundle.description}</p>
+                        <small class="text-muted">$${parseFloat(bundle.price).toFixed(2)} &bull; ${statusBadge}</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="startEdit(${bundle.id})">Edit</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteBundle(${bundle.id})">Delete</button>
+                    </div>
+                </div>
+            `;
+          container.appendChild(card);
+        });
+      }
+
+      function resetForm() {
+        editingBundleId = null;
+        document.getElementById("formTitle").innerText = "Create New Bundle";
+        document.getElementById("saveButton").innerText = "Save Bundle";
+        document.getElementById("cancelButton").style.display = "none";
+        document.getElementById("formMessage").innerText = "";
+        document.getElementById("bundleForm").reset();
+      }
+
+      function startEdit(bundleId) {
+        const bundle = allBundles.find((b) => b.id === bundleId);
+        if (!bundle) return;
+
+        editingBundleId = bundleId;
+        document.getElementById("formTitle").innerText = "Edit Bundle";
+        document.getElementById("saveButton").innerText = "Update Bundle";
+        document.getElementById("cancelButton").style.display = "inline-block";
+        document.getElementById("bundleName").value = bundle.name;
+        document.getElementById("bundleDesc").value = bundle.description;
+        document.getElementById("bundlePrice").value = bundle.price;
+        document.getElementById("bundleStatus").value = bundle.status;
+      }
+
+      async function deleteBundle(bundleId) {
+        if (!confirm("Delete this bundle?")) return;
+        try {
+          const res = await fetch(`/admin/bundles/${bundleId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          await loadBundles();
+        } catch (err) {
+          console.error(err);
+          alert("Could not delete bundle.");
+        }
+      }
+
+      function filterBundles() {
+        const search = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        filteredBundles = allBundles.filter(
+          (bundle) =>
+            bundle.name.toLowerCase().includes(search) ||
+            bundle.description.toLowerCase().includes(search),
+        );
+        renderBundles();
+      }
+
+      document
+        .getElementById("bundleForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const payload = {
+            name: document.getElementById("bundleName").value.trim(),
+            description: document.getElementById("bundleDesc").value.trim(),
+            price: parseFloat(document.getElementById("bundlePrice").value),
+            status: document.getElementById("bundleStatus").value,
+          };
+
+          const url = editingBundleId
+            ? `/admin/bundles/${editingBundleId}`
+            : "/admin/bundles";
+          const method = editingBundleId ? "PUT" : "POST";
+
+          try {
+            const res = await fetch(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              const errorText = await res.text();
+              throw new Error(errorText || "Request failed");
+            }
+            document.getElementById("formMessage").innerText = editingBundleId
+              ? "Bundle updated successfully."
+              : "Bundle created successfully.";
+            resetForm();
+            await loadBundles();
+          } catch (err) {
+            console.error(err);
+            document.getElementById("formMessage").innerText =
+              "Error: " + err.message;
+          }
+        });
+
+      document
+        .getElementById("cancelButton")
+        .addEventListener("click", resetForm);
+      document
+        .getElementById("searchInput")
+        .addEventListener("keyup", filterBundles);
+
+      loadBundles();
+    </script>
+  </body>
+</html>
