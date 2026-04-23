@@ -277,60 +277,47 @@ app.get("/posts", (req, res) => {
     const currentUserId = req.session.userId;
     if (!currentUserId) return res.status(401).send("Not logged in");
 
+    // Simplified logic: Just get posts from ME or my FRIENDS
     const postSql = `
         SELECT posts.*, users.name, 
         (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count,
         (SELECT COUNT(*) FROM likes WHERE post_id = posts.id AND user_id = ?) AS user_has_liked
         FROM posts 
         JOIN users ON posts.user_id = users.id
-                WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM user_hidden_content uhc
-                        JOIN content_items ci ON ci.id = uhc.content_item_id
-                        WHERE uhc.user_id = ?
-                            AND uhc.unhidden_at IS NULL
-                            AND ci.post_id = posts.id
-                )
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM user_hidden_content uhc
-                        JOIN content_items ci ON ci.id = uhc.content_item_id
-                        WHERE uhc.user_id = ?
-                            AND uhc.unhidden_at IS NULL
-                            AND ci.profile_user_id = posts.user_id
-                )
-        GROUP BY posts.id
+        WHERE (
+            posts.user_id = ? 
+            OR posts.user_id IN (
+                SELECT CASE 
+                    WHEN user_id_1 = ? THEN user_id_2 
+                    ELSE user_id_1 
+                END 
+                FROM friends 
+                WHERE user_id_1 = ? OR user_id_2 = ?
+            )
+        )
         ORDER BY posts.created_at DESC
     `;
 
-        db.query(postSql, [currentUserId, currentUserId, currentUserId], (err, posts) => {
-        if (err) return res.status(500).send("Error");
+    // We only have 5 question marks now, so we only need 5 parameters
+    db.query(postSql, [currentUserId, currentUserId, currentUserId, currentUserId, currentUserId], (err, posts) => {
+        if (err) {
+            console.error("Post Fetch Error:", err);
+            return res.status(500).send("Error loading feed");
+        }
 
-                const commentSql = `
-                        SELECT comments.*, users.name
-                        FROM comments
-                        JOIN users ON comments.user_id = users.id
-                        WHERE NOT EXISTS (
-                                SELECT 1
-                                FROM user_hidden_content uhc
-                                JOIN content_items ci ON ci.id = uhc.content_item_id
-                                WHERE uhc.user_id = ?
-                                    AND uhc.unhidden_at IS NULL
-                                    AND ci.comment_id = comments.id
-                        )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM user_hidden_content uhc
-                                JOIN content_items ci ON ci.id = uhc.content_item_id
-                                WHERE uhc.user_id = ?
-                                    AND uhc.unhidden_at IS NULL
-                                    AND ci.profile_user_id = comments.user_id
-                        )
-                `;
-                db.query(commentSql, [currentUserId, currentUserId], (err, comments) => {
+        // Get comments (Simplified: no hiding logic here either)
+        const commentSql = `
+            SELECT comments.*, users.name
+            FROM comments
+            JOIN users ON comments.user_id = users.id
+        `;
+        
+        db.query(commentSql, (err, comments) => {
+            if (err) return res.status(500).send("Error loading comments");
+            
             const postsWithComments = posts.map(post => ({
                 ...post,
-                comments: comments.filter(c => c.post_id === post.id)
+                comments: (comments || []).filter(c => c.post_id === post.id)
             }));
             res.json(postsWithComments);
         });
@@ -1332,6 +1319,28 @@ app.post('/admin/refunds/:id/deny', (req, res) => {
                 res.json({ success: true, message: "User unmuted." });
             });
         });
+
+ /* Get all users for the 'Discover' tab */
+app.get("/all-users", (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+    // Fetches all users except the current user
+    const sql = `
+        SELECT id, name, bio, profile_pic 
+        FROM users 
+        WHERE id != ?
+        ORDER BY name ASC
+    `;
+
+    db.query(sql, [userId], (err, users) => {
+        if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ error: "Failed to load users" });
+        }
+        res.json(users);
+    });
+});       
 
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");

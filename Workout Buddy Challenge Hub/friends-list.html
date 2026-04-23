@@ -8,7 +8,6 @@
 </head>
 
 <body>
-    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-custom px-4">
         <a class="navbar-brand brand-title" href="dashboard.html">Workout Buddy</a>
         <div class="ms-auto">
@@ -43,6 +42,11 @@
                     Requests Sent <span id="outgoing-count-badge" class="badge bg-secondary ms-2">0</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#all-users-tab" type="button" role="tab" onclick="loadAllUsers()">
+                    Discover Users
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -61,6 +65,12 @@
             <div class="tab-pane fade" id="outgoing-tab" role="tabpanel">
                 <div id="outgoing-list" class="row g-3">
                     <p class="text-muted">Loading sent requests...</p>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="all-users-tab" role="tabpanel">
+                <div id="all-users-list" class="row g-3">
+                    <p class="text-muted">Loading all users...</p>
                 </div>
             </div>
         </div>
@@ -98,6 +108,8 @@
         function profileUrl(userId) {
             return `user-profile.html?userId=${userId}`;
         }
+
+        /* --- RENDERING FUNCTIONS --- */
 
         function friendCard(friend) {
             return `
@@ -155,6 +167,25 @@
             `;
         }
 
+
+        // NEW: Card for "Discover Users" tab
+        function allUsersCard(user) {
+            return `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card-custom h-100" style="border-left: 4px solid #709770;">
+                        <h5 class="brand-title mb-1">${escapeHtml(user.name)}</h5>
+                        <p class="text-muted small mb-3">${user.bio ? escapeHtml(user.bio) : 'No bio yet'}</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-sm btn-success" onclick="sendFriendRequest(${user.id})">Add Friend</button>
+                            <a class="btn btn-sm btn-outline-secondary" href="${profileUrl(user.id)}">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* --- DATA LOADING FUNCTIONS --- */
+
         async function loadFriends() {
             const friends = await requestJson('/friends');
             const container = document.getElementById('friends-list');
@@ -174,6 +205,33 @@
             const container = document.getElementById('outgoing-list');
             document.getElementById('outgoing-count-badge').textContent = requests.length;
             container.innerHTML = requests.length ? requests.map(outgoingCard).join('') : '<p class="text-muted">No outgoing requests.</p>';
+        }
+
+        // NEW: Load all users from the database
+        async function loadAllUsers() {
+            try {
+                const users = await requestJson('/all-users');
+                const container = document.getElementById('all-users-list');
+                container.innerHTML = users.length ? users.map(allUsersCard).join('') : '<p class="text-muted">No other users found.</p>';
+            } catch (err) {
+                console.error(err);
+                document.getElementById('all-users-list').innerHTML = '<p class="text-danger">Failed to load users.</p>';
+            }
+        }
+
+        /* --- ACTION FUNCTIONS --- */
+
+        async function sendFriendRequest(toUserId) {
+            try {
+                const response = await requestJson('/send-friend-request', {
+                    method: 'POST',
+                    body: JSON.stringify({ to_user_id: toUserId })
+                });
+                alert(response.message || "Friend request sent!");
+                await refreshAll();
+            } catch (err) {
+                alert(err.message);
+            }
         }
 
         async function acceptRequest(requestId) {
@@ -213,6 +271,10 @@
 
         async function refreshAll() {
             await Promise.all([loadFriends(), loadIncoming(), loadOutgoing()]);
+            // If the user is on the all-users tab, refresh that too
+            if (document.getElementById('all-users-tab').classList.contains('active')) {
+                await loadAllUsers();
+            }
         }
 
         async function init() {
